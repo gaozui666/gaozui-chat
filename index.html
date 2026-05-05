@@ -26,17 +26,60 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      position: relative;
     }
     .top{
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
       color: #fff;
-      padding: 16px 20px;
-      text-align: center;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-weight: 700;
-      font-size: 17px;
+      font-size: 16px;
       letter-spacing: 0.3px;
       flex-shrink: 0;
     }
+    .online-info{
+      font-size: 12px;
+      font-weight: 400;
+      background: rgba(255,255,255,0.2);
+      padding: 4px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      position: relative;
+    }
+    .online-list{
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 6px;
+      background: #fff;
+      color: #1e293b;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      padding: 8px 0;
+      min-width: 120px;
+      z-index: 10;
+      font-weight: 400;
+      font-size: 13px;
+    }
+    .online-list.show{display:block}
+    .online-list .user{
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .online-list .user .dot{
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    
     #msgs{
       flex: 1;
       overflow-y: auto;
@@ -70,7 +113,6 @@
       word-break: break-word;
       box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     }
-    /* AI 消息给个特别的背景色 */
     .msg-row.ai .msg-content{
       background: #eef2ff;
       border: 1px solid #d4d9fc;
@@ -95,18 +137,31 @@
       display: block;
       cursor: pointer;
     }
-    .bar{
-      padding: 10px 12px;
+    
+    /* 系统提示:居中灰色小字 */
+    .system-msg{
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #94a3b8;
+      user-select: none;
+    }
+    
+    /* 底部栏 */
+    .bar-wrapper{
+      flex-shrink: 0;
+      background: #fff;
       border-top: 1px solid #e8eaef;
+    }
+    .bar-inner{
       display: flex;
       align-items: center;
+      padding: 10px 12px;
       gap: 8px;
-      background: #fff;
-      flex-shrink: 0;
     }
-    .bar input[type="text"]{
+    .bar-inner input[type="text"]{
       flex: 1;
-      padding: 10px 16px;
+      padding: 10px 14px;
       border: 2px solid #e8eaef;
       border-radius: 22px;
       outline: none;
@@ -114,13 +169,32 @@
       background: #f8f9fb;
       transition: border 0.2s;
       min-width: 0;
+      order: 2;
     }
-    .bar input[type="text"]:focus{
+    .bar-inner input[type="text"]:focus{
       border-color: #6366f1;
       background: #fff;
     }
-    .bar button{
-      padding: 10px 16px;
+    .img-btn{
+      order: 1;
+      background: #94a3b8;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      font-size: 18px;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .img-btn:active{background: #64748b}
+    .send-btn{
+      order: 3;
+      padding: 10px 18px;
       background: #6366f1;
       color: #fff;
       border: none;
@@ -129,17 +203,10 @@
       cursor: pointer;
       font-size: 14px;
       white-space: nowrap;
-      transition: background 0.2s;
       flex-shrink: 0;
+      transition: background 0.2s;
     }
-    .bar button:active{background:#4f46e5}
-    .img-btn{
-      background: #94a3b8 !important;
-      font-size: 18px !important;
-      padding: 10px 12px !important;
-      min-width: 42px;
-    }
-    .img-btn:active{background: #64748b !important}
+    .send-btn:active{background:#4f46e5}
     #imgInput{display:none}
     
     .enter{
@@ -239,14 +306,13 @@
 
     .watermark{
       text-align: center;
-      padding: 8px 12px;
-      font-size: 11px;
+      padding: 6px 12px;
+      font-size: 10px;
       color: #94a3b8;
       background: #f8f9fb;
-      border-top: 1px solid #e8eaef;
       flex-shrink: 0;
       user-select: none;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
     .watermark-login{
       text-align: center;
@@ -263,7 +329,13 @@
 <body>
 
 <div class="cont">
-  <div class="top" id="title">💬 聊天室</div>
+  <div class="top">
+    <span id="title">💬 聊天室</span>
+    <span class="online-info" id="onlineInfo" onclick="toggleOnlineList()">
+      🟢 <span id="onlineCount">0</span> 人在线
+      <div class="online-list" id="onlineList"></div>
+    </span>
+  </div>
 
   <div id="login" class="enter">
     <h3>加入聊天</h3>
@@ -285,14 +357,17 @@
 
   <div id="room" class="hidden" style="display:flex;flex-direction:column;height:100%">
     <div id="msgs"></div>
-    <div class="bar">
-      <input type="file" id="imgInput" accept="image/*">
-      <button class="img-btn" onclick="document.getElementById('imgInput').click()">🖼️</button>
-      <input id="say" placeholder="输入消息,@AI 开头可提问" autocomplete="off">
-      <button id="sendBtn">发送</button>
-    </div>
-    <div class="watermark">
-      本网页属于宁波第二艺术实验学校学生之间聊天工具 · 创作者:601班 高瑜昊
+    
+    <div class="bar-wrapper">
+      <div class="bar-inner">
+        <input type="file" id="imgInput" accept="image/*">
+        <button class="img-btn" onclick="document.getElementById('imgInput').click()">🖼️</button>
+        <input id="say" placeholder="输入消息,@AI 可提问" autocomplete="off">
+        <button class="send-btn" id="sendBtn">发送</button>
+      </div>
+      <div class="watermark">
+        本网页属于宁波第二艺术实验学校学生之间聊天工具 · 创作者:601班 高瑜昊
+      </div>
     </div>
   </div>
 </div>
@@ -302,11 +377,11 @@
   // ========== 配置(改这里)==========
   const CHANNEL_ID = "SwLZhbOCTTsAcXaR";
   const IMGBB_KEY = "de1365709bd94acab828a7d6e6f35e36";
-  const DEEPSEEK_KEY = "sk-ff9ca06276354d6eb29fa3909294d6eb";   // <--- 把你的DeepSeek密钥
+  const DEEPSEEK_KEY = "sk-ff9ca06276354d6eb29fa3909294d6eb";
   const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
   // ===================================
 
-  const AI_AVATAR = "https://api.dicebear.com/7.x/bottts/svg?seed=deepseek"; // AI专属头像
+  const AI_AVATAR = "https://api.dicebear.com/7.x/bottts/svg?seed=deepseek";
   const presetAvatars = [
     "https://api.dicebear.com/7.x/thumbs/svg?seed=cat",
     "https://api.dicebear.com/7.x/thumbs/svg?seed=dog",
@@ -317,6 +392,39 @@
   ];
 
   let drone, myName = "", myAvatar = presetAvatars[0];
+  let onlineUsers = {};
+  let previousMemberIds = [];
+
+  // ========== 在线列表 ==========
+  function toggleOnlineList() {
+    document.getElementById("onlineList").classList.toggle("show");
+  }
+
+  function updateOnlineDisplay() {
+    const users = Object.values(onlineUsers);
+    const count = users.length;
+    document.getElementById("onlineCount").textContent = count;
+    
+    const listEl = document.getElementById("onlineList");
+    listEl.innerHTML = users.map(u => 
+      `<div class="user"><span class="dot"></span>${u.name}</div>`
+    ).join("");
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".online-info")) {
+      document.getElementById("onlineList").classList.remove("show");
+    }
+  });
+
+  // ========== 显示系统消息(居中灰字)==========
+  function showSystemMsg(text) {
+    const div = document.createElement("div");
+    div.className = "system-msg";
+    div.textContent = text;
+    document.getElementById("msgs").appendChild(div);
+    document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
+  }
 
   // ========== 头像选择逻辑 ==========
   const avatarContainer = document.getElementById("avatars");
@@ -376,7 +484,7 @@
     const nick = document.getElementById("nick").value.trim();
     if (!nick) return alert("请输入昵称");
     myName = nick;
-    document.getElementById("title").textContent = "💬 聊天室 · " + myName;
+    document.getElementById("title").textContent = "💬 聊天室";
     document.getElementById("login").classList.add("hidden");
     document.getElementById("room").classList.remove("hidden");
 
@@ -384,8 +492,59 @@
 
     drone.on("open", (error) => {
       if (error) return console.error(error);
+      
       const room = drone.subscribe("observable-room");
-      room.on("message", (msg) => showMessage(msg.data));
+      
+      // 监听成员变化
+      room.on("members", (members) => {
+        const currentIds = members.map(m => m.id);
+        
+        // 第一次不提示,只记录
+        if (previousMemberIds.length === 0) {
+          previousMemberIds = currentIds;
+          onlineUsers = {};
+          members.forEach(m => {
+            if (m.clientData && m.clientData.name) {
+              onlineUsers[m.id] = { name: m.clientData.name };
+            }
+          });
+          updateOnlineDisplay();
+          return;
+        }
+
+        // 检查谁加入了
+        const joined = members.filter(m => !previousMemberIds.includes(m.id));
+        joined.forEach(m => {
+          if (m.clientData && m.clientData.name) {
+            showSystemMsg(m.clientData.name + " 已加入该聊天");
+          }
+        });
+
+        // 检查谁退出了
+        const leftIds = previousMemberIds.filter(id => !currentIds.includes(id));
+        leftIds.forEach(id => {
+          if (onlineUsers[id]) {
+            showSystemMsg(onlineUsers[id].name + " 已退出该聊天");
+          }
+        });
+
+        // 更新在线列表
+        onlineUsers = {};
+        members.forEach(m => {
+          if (m.clientData && m.clientData.name) {
+            onlineUsers[m.id] = { name: m.clientData.name };
+          }
+        });
+        previousMemberIds = currentIds;
+        updateOnlineDisplay();
+      });
+
+      // 监听消息
+      room.on("message", (msg) => {
+        if (msg.data.name && msg.data.name !== "__system__") {
+          showMessage(msg.data);
+        }
+      });
     });
   };
 
@@ -399,7 +558,6 @@
     const row = document.createElement("div");
     row.className = "msg-row";
 
-    // 如果发送者是 AI,用特殊样式和头像
     if (name === "AI助手") {
       row.classList.add("ai");
     }
@@ -474,7 +632,6 @@
     const txt = inp.value.trim();
     if (!txt || !drone) return;
 
-    // 发用户消息
     drone.publish({
       room: "observable-room",
       message: { name: myName, text: txt, avatar: myAvatar, image: null }
@@ -482,11 +639,9 @@
 
     inp.value = "";
 
-    // 检测是否 @AI
     if (txt.startsWith("@AI") || txt.startsWith("@ai")) {
       const question = txt.replace(/^@AI\s*/i, "").trim();
       if (question) {
-        // 显示“AI 正在输入...”
         const loadingRow = document.createElement("div");
         loadingRow.className = "msg-row ai";
         loadingRow.id = "ai-loading";
@@ -501,13 +656,10 @@
         document.getElementById("msgs").appendChild(loadingRow);
         document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
 
-        // 请求 AI
         askAI(question).then(reply => {
-          // 移除加载提示
           const loadEl = document.getElementById("ai-loading");
           if (loadEl) loadEl.remove();
 
-          // 发 AI 回复
           drone.publish({
             room: "observable-room",
             message: { name: "AI助手", text: reply, avatar: AI_AVATAR, image: null }
