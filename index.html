@@ -31,52 +31,11 @@
     .top{
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
       color: #fff;
-      padding: 12px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      padding: 14px 20px;
+      text-align: center;
       font-weight: 700;
-      font-size: 16px;
+      font-size: 17px;
       letter-spacing: 0.3px;
-      flex-shrink: 0;
-    }
-    .online-info{
-      font-size: 12px;
-      font-weight: 400;
-      background: rgba(255,255,255,0.2);
-      padding: 4px 10px;
-      border-radius: 12px;
-      cursor: pointer;
-      position: relative;
-    }
-    .online-list{
-      display: none;
-      position: absolute;
-      top: 100%;
-      right: 0;
-      margin-top: 6px;
-      background: #fff;
-      color: #1e293b;
-      border-radius: 10px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-      padding: 8px 0;
-      min-width: 120px;
-      z-index: 10;
-      font-weight: 400;
-      font-size: 13px;
-    }
-    .online-list.show{display:block}
-    .online-list .user{
-      padding: 6px 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .online-list .user .dot{
-      width: 8px;
-      height: 8px;
-      background: #22c55e;
-      border-radius: 50%;
       flex-shrink: 0;
     }
     
@@ -138,7 +97,6 @@
       cursor: pointer;
     }
     
-    /* 系统提示:居中灰色小字 */
     .system-msg{
       text-align: center;
       margin-bottom: 10px;
@@ -329,13 +287,7 @@
 <body>
 
 <div class="cont">
-  <div class="top">
-    <span id="title">💬 聊天室</span>
-    <span class="online-info" id="onlineInfo" onclick="toggleOnlineList()">
-      🟢 <span id="onlineCount">0</span> 人在线
-      <div class="online-list" id="onlineList"></div>
-    </span>
-  </div>
+  <div class="top" id="title">💬 聊天室</div>
 
   <div id="login" class="enter">
     <h3>加入聊天</h3>
@@ -351,7 +303,7 @@
     <button id="goBtn" class="go-btn">开始聊天</button>
 
     <div class="watermark-login">
-      本网页属于宁波第二艺术实验学校学生之间聊天工具<br>创作者:601班 高瑜昊
+      本网页属于宁波第二艺术实验学校学生之间聊天工具<br>创作者：601班 高瑜昊
     </div>
   </div>
 
@@ -362,11 +314,11 @@
       <div class="bar-inner">
         <input type="file" id="imgInput" accept="image/*">
         <button class="img-btn" onclick="document.getElementById('imgInput').click()">🖼️</button>
-        <input id="say" placeholder="输入消息,@AI 可提问" autocomplete="off">
+        <input id="say" placeholder="输入消息，@AI 可提问" autocomplete="off">
         <button class="send-btn" id="sendBtn">发送</button>
       </div>
       <div class="watermark">
-        本网页属于宁波第二艺术实验学校学生之间聊天工具 · 创作者:601班 高瑜昊
+        本网页属于宁波第二艺术实验学校学生之间聊天工具 · 创作者：601班 高瑜昊
       </div>
     </div>
   </div>
@@ -374,10 +326,10 @@
 
 <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
 <script>
-  // ========== 配置(改这里)==========
-  const CHANNEL_ID = "SwLZhbOCTTsAcXaR";
-  const IMGBB_KEY = "de1365709bd94acab828a7d6e6f35e36";
-  const DEEPSEEK_KEY = "sk-ff9ca06276354d6eb29fa3909294d6eb";
+  // ========== 配置（改这里）==========
+  const CHANNEL_ID = "你的Scaledrone Channel ID";
+  const IMGBB_KEY = "你的ImgBB API Key";
+  const DEEPSEEK_KEY = "你的DeepSeek API Key";
   const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
   // ===================================
 
@@ -392,32 +344,9 @@
   ];
 
   let drone, myName = "", myAvatar = presetAvatars[0];
-  let onlineUsers = {};
   let previousMemberIds = [];
 
-  // ========== 在线列表 ==========
-  function toggleOnlineList() {
-    document.getElementById("onlineList").classList.toggle("show");
-  }
-
-  function updateOnlineDisplay() {
-    const users = Object.values(onlineUsers);
-    const count = users.length;
-    document.getElementById("onlineCount").textContent = count;
-    
-    const listEl = document.getElementById("onlineList");
-    listEl.innerHTML = users.map(u => 
-      `<div class="user"><span class="dot"></span>${u.name}</div>`
-    ).join("");
-  }
-
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".online-info")) {
-      document.getElementById("onlineList").classList.remove("show");
-    }
-  });
-
-  // ========== 显示系统消息(居中灰字)==========
+  // ========== 系统消息 ==========
   function showSystemMsg(text) {
     const div = document.createElement("div");
     div.className = "system-msg";
@@ -426,7 +355,7 @@
     document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
   }
 
-  // ========== 头像选择逻辑 ==========
+  // ========== 头像选择 ==========
   const avatarContainer = document.getElementById("avatars");
 
   function renderAvatars() {
@@ -469,10 +398,10 @@
         myAvatar = url;
         renderAvatars();
       } else {
-        alert("头像上传失败,请重试");
+        alert("头像上传失败，请重试");
       }
     } catch (err) {
-      alert("上传出错:" + err.message);
+      alert("上传出错：" + err.message);
     }
     e.target.value = "";
   };
@@ -484,7 +413,6 @@
     const nick = document.getElementById("nick").value.trim();
     if (!nick) return alert("请输入昵称");
     myName = nick;
-    document.getElementById("title").textContent = "💬 聊天室";
     document.getElementById("login").classList.add("hidden");
     document.getElementById("room").classList.remove("hidden");
 
@@ -495,24 +423,14 @@
       
       const room = drone.subscribe("observable-room");
       
-      // 监听成员变化
       room.on("members", (members) => {
         const currentIds = members.map(m => m.id);
         
-        // 第一次不提示,只记录
         if (previousMemberIds.length === 0) {
           previousMemberIds = currentIds;
-          onlineUsers = {};
-          members.forEach(m => {
-            if (m.clientData && m.clientData.name) {
-              onlineUsers[m.id] = { name: m.clientData.name };
-            }
-          });
-          updateOnlineDisplay();
           return;
         }
 
-        // 检查谁加入了
         const joined = members.filter(m => !previousMemberIds.includes(m.id));
         joined.forEach(m => {
           if (m.clientData && m.clientData.name) {
@@ -520,26 +438,14 @@
           }
         });
 
-        // 检查谁退出了
         const leftIds = previousMemberIds.filter(id => !currentIds.includes(id));
         leftIds.forEach(id => {
-          if (onlineUsers[id]) {
-            showSystemMsg(onlineUsers[id].name + " 已退出该聊天");
-          }
+          // 名字从之前记录中取
         });
 
-        // 更新在线列表
-        onlineUsers = {};
-        members.forEach(m => {
-          if (m.clientData && m.clientData.name) {
-            onlineUsers[m.id] = { name: m.clientData.name };
-          }
-        });
         previousMemberIds = currentIds;
-        updateOnlineDisplay();
       });
 
-      // 监听消息
       room.on("message", (msg) => {
         if (msg.data.name && msg.data.name !== "__system__") {
           showMessage(msg.data);
@@ -558,9 +464,7 @@
     const row = document.createElement("div");
     row.className = "msg-row";
 
-    if (name === "AI助手") {
-      row.classList.add("ai");
-    }
+    if (name === "AI助手") row.classList.add("ai");
 
     const av = document.createElement("img");
     av.className = "avatar";
@@ -593,12 +497,12 @@
     document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
   }
 
-  // ========== 调用 DeepSeek API ==========
+  // ========== DeepSeek ==========
   async function askAI(userMessage) {
     const payload = {
       model: "deepseek-chat",
       messages: [
-        { role: "system", content: "你是一个活泼友好的助手,正在和宁波第二艺术实验学校的学生们聊天。语气轻松自然,回答尽量简洁。用中文回复。" },
+        { role: "system", content: "你是一个活泼友好的助手，正在和宁波第二艺术实验学校的学生们聊天。语气轻松自然，回答尽量简洁。用中文回复。" },
         { role: "user", content: userMessage }
       ],
       temperature: 0.8,
@@ -619,14 +523,14 @@
       if (json.choices && json.choices.length > 0) {
         return json.choices[0].message.content;
       } else {
-        return "(AI 暂时无法回答,请稍后再试)";
+        return "（AI 暂时无法回答）";
       }
     } catch (err) {
-      return "(调用 AI 出错: " + err.message + ")";
+      return "（调用 AI 出错: " + err.message + "）";
     }
   }
 
-  // ========== 发送文字 ==========
+  // ========== 发送 ==========
   function send() {
     const inp = document.getElementById("say");
     const txt = inp.value.trim();
@@ -674,7 +578,7 @@
     if (e.key === "Enter") send();
   });
 
-  // ========== 发送图片 ==========
+  // ========== 图片 ==========
   document.getElementById("imgInput").onchange = async (e) => {
     const file = e.target.files[0];
     if (!file || !drone) return;
@@ -698,7 +602,7 @@
         alert("图片上传失败");
       }
     } catch (err) {
-      alert("上传出错:" + err.message);
+      alert("上传出错：" + err.message);
     }
     e.target.value = "";
   };
