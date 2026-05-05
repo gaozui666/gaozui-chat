@@ -2,31 +2,262 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>聊天室</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:system-ui,sans-serif;background:#e8ecf1;display:flex;justify-content:center;align-items:center;height:100vh}
-    .cont{width:100vw;max-width:440px;height:100vh;max-height:680px;background:#fff;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,0.08);display:flex;flex-direction:column;overflow:hidden}
-    .top{background:#5c6bc0;color:#fff;padding:15px;text-align:center;font-weight:600}
-    #msgs{flex:1;overflow-y:auto;padding:14px;background:#fafbfc}
-    .msg-row{display:flex;align-items:flex-start;margin-bottom:12px;gap:8px}
-    .avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;object-fit:cover;background:#d0d7e2}
-    .msg-content{background:#f0f2f5;border-radius:10px;padding:8px 12px;max-width:75%;word-break:break-word}
-    .msg-content .name{color:#5c6bc0;font-size:12px;font-weight:600;margin-bottom:3px}
-    .msg-content .text{font-size:14px;white-space:pre-wrap;line-height:1.4}
-    .msg-content img{max-width:200px;max-height:200px;border-radius:6px;margin-top:4px;display:block}
-    .bar{padding:8px;border-top:1px solid #eee;display:flex;align-items:center;gap:6px;background:#fff}
-    .bar input[type="text"]{flex:1;padding:10px 14px;border:2px solid #e0e0e0;border-radius:18px;outline:none;font-size:14px}
-    .bar button{padding:10px 14px;background:#5c6bc0;color:#fff;border:none;border-radius:18px;font-weight:500;cursor:pointer;font-size:14px;white-space:nowrap}
+    body{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #e8ecf1 0%, #d5dce6 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 10px;
+    }
+    .cont{
+      width: 100%;
+      max-width: 420px;
+      height: 95vh;
+      max-height: 700px;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .top{
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: #fff;
+      padding: 16px 20px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: 0.3px;
+      flex-shrink: 0;
+    }
+    #msgs{
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: #f8f9fb;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .msg-row{
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      gap: 10px;
+    }
+    .avatar{
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      object-fit: cover;
+      background: #e2e5ea;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+    .msg-content{
+      background: #fff;
+      border-radius: 14px;
+      padding: 10px 14px;
+      max-width: 78%;
+      word-break: break-word;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    /* AI 消息给个特别的背景色 */
+    .msg-row.ai .msg-content{
+      background: #eef2ff;
+      border: 1px solid #d4d9fc;
+    }
+    .msg-content .name{
+      color: #6366f1;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .msg-content .text{
+      font-size: 14px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      color: #1e293b;
+    }
+    .msg-content img{
+      max-width: 100%;
+      max-height: 220px;
+      border-radius: 10px;
+      margin-top: 6px;
+      display: block;
+      cursor: pointer;
+    }
+    .bar{
+      padding: 10px 12px;
+      border-top: 1px solid #e8eaef;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      flex-shrink: 0;
+    }
+    .bar input[type="text"]{
+      flex: 1;
+      padding: 10px 16px;
+      border: 2px solid #e8eaef;
+      border-radius: 22px;
+      outline: none;
+      font-size: 14px;
+      background: #f8f9fb;
+      transition: border 0.2s;
+      min-width: 0;
+    }
+    .bar input[type="text"]:focus{
+      border-color: #6366f1;
+      background: #fff;
+    }
+    .bar button{
+      padding: 10px 16px;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 22px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      white-space: nowrap;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .bar button:active{background:#4f46e5}
+    .img-btn{
+      background: #94a3b8 !important;
+      font-size: 18px !important;
+      padding: 10px 12px !important;
+      min-width: 42px;
+    }
+    .img-btn:active{background: #64748b !important}
     #imgInput{display:none}
-    .enter{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:28px;gap:12px}
-    .enter input[type="text"]{width:100%;padding:12px;font-size:16px;border:2px solid #ddd;border-radius:10px;outline:none}
-    .enter button{padding:12px 30px;background:#5c6bc0;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer;font-weight:500}
-    .avatar-pick{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-    .avatar-pick img{width:48px;height:48px;border-radius:50%;border:3px solid transparent;cursor:pointer;object-fit:cover}
-    .avatar-pick img.sel{border-color:#5c6bc0}
+    
+    .enter{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 30px 24px;
+      gap: 14px;
+      position: relative;
+    }
+    .enter h3{
+      font-size: 20px;
+      color: #1e293b;
+      font-weight: 700;
+    }
+    .enter .nick-input{
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 16px;
+      border: 2px solid #e8eaef;
+      border-radius: 14px;
+      outline: none;
+      background: #f8f9fb;
+      transition: border 0.2s;
+    }
+    .enter .nick-input:focus{
+      border-color: #6366f1;
+      background: #fff;
+    }
+    .enter .go-btn{
+      padding: 14px 40px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.2s;
+      width: 100%;
+      max-width: 260px;
+    }
+    .enter .go-btn:active{opacity:0.85}
+    
+    .avatar-section{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .avatar-section .label{
+      font-size: 13px;
+      color: #888;
+    }
+    .avatar-pick{
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .avatar-pick img{
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      object-fit: cover;
+      transition: border 0.2s, transform 0.2s;
+    }
+    .avatar-pick img:hover{transform: scale(1.08)}
+    .avatar-pick img.sel{
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+    }
+    .upload-avatar-btn{
+      padding: 8px 18px;
+      background: #f1f5f9;
+      color: #475569;
+      border: 2px dashed #cbd5e1;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .upload-avatar-btn:active{background:#e2e8f0}
+    #avatarFileInput{display:none}
+    
     .hidden{display:none!important}
+    
+    #msgs::-webkit-scrollbar{width:5px}
+    #msgs::-webkit-scrollbar-track{background:transparent}
+    #msgs::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:10px}
+
+    .watermark{
+      text-align: center;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #94a3b8;
+      background: #f8f9fb;
+      border-top: 1px solid #e8eaef;
+      flex-shrink: 0;
+      user-select: none;
+      letter-spacing: 0.5px;
+    }
+    .watermark-login{
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+      position: absolute;
+      bottom: 16px;
+      left: 0;
+      right: 0;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
@@ -35,20 +266,33 @@
   <div class="top" id="title">💬 聊天室</div>
 
   <div id="login" class="enter">
-    <h3>输入昵称</h3>
-    <input id="nick" placeholder="你的昵称" autocomplete="off">
-    <p style="font-size:13px;color:#888">选一个头像</p>
-    <div class="avatar-pick" id="avatars"></div>
-    <button id="goBtn">开始聊天</button>
+    <h3>加入聊天</h3>
+    <input id="nick" class="nick-input" placeholder="输入你的昵称" autocomplete="off">
+    
+    <div class="avatar-section">
+      <span class="label">选择头像</span>
+      <div class="avatar-pick" id="avatars"></div>
+      <input type="file" id="avatarFileInput" accept="image/*">
+      <button class="upload-avatar-btn" onclick="document.getElementById('avatarFileInput').click()">📷 从相册选取</button>
+    </div>
+    
+    <button id="goBtn" class="go-btn">开始聊天</button>
+
+    <div class="watermark-login">
+      本网页属于宁波第二艺术实验学校学生之间聊天工具<br>创作者:601班 高瑜昊
+    </div>
   </div>
 
   <div id="room" class="hidden" style="display:flex;flex-direction:column;height:100%">
     <div id="msgs"></div>
     <div class="bar">
       <input type="file" id="imgInput" accept="image/*">
-      <button onclick="document.getElementById('imgInput').click()" style="background:#8e99a3;padding:10px 12px;font-size:18px">🖼️</button>
-      <input id="say" placeholder="发一句话..." autocomplete="off">
+      <button class="img-btn" onclick="document.getElementById('imgInput').click()">🖼️</button>
+      <input id="say" placeholder="输入消息,@AI 开头可提问" autocomplete="off">
       <button id="sendBtn">发送</button>
+    </div>
+    <div class="watermark">
+      本网页属于宁波第二艺术实验学校学生之间聊天工具 · 创作者:601班 高瑜昊
     </div>
   </div>
 </div>
@@ -57,9 +301,12 @@
 <script>
   // ========== 配置(改这里)==========
   const CHANNEL_ID = "SwLZhbOCTTsAcXaR";
-  const IMGBB_KEY = "de1365709bd94acab828a7d6e6f35e36";  // 去 imgbb.com 免费拿
+  const IMGBB_KEY = "de1365709bd94acab828a7d6e6f35e36";
+  const DEEPSEEK_KEY = "sk-ff9ca06276354d6eb29fa3909294d6eb";   // <--- 把你的DeepSeek密钥
+  const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
   // ===================================
 
+  const AI_AVATAR = "https://api.dicebear.com/7.x/bottts/svg?seed=deepseek"; // AI专属头像
   const presetAvatars = [
     "https://api.dicebear.com/7.x/thumbs/svg?seed=cat",
     "https://api.dicebear.com/7.x/thumbs/svg?seed=dog",
@@ -71,25 +318,65 @@
 
   let drone, myName = "", myAvatar = presetAvatars[0];
 
-  // 生成头像选择
-  presetAvatars.forEach((url, i) => {
-    const img = document.createElement("img");
-    img.src = url;
-    img.onclick = () => {
-      document.querySelectorAll(".avatar-pick img").forEach(el => el.classList.remove("sel"));
-      img.classList.add("sel");
-      myAvatar = url;
-    };
-    document.getElementById("avatars").appendChild(img);
-    if (i === 0) img.classList.add("sel");
-  });
+  // ========== 头像选择逻辑 ==========
+  const avatarContainer = document.getElementById("avatars");
 
-  // 进入聊天
+  function renderAvatars() {
+    avatarContainer.innerHTML = "";
+    presetAvatars.forEach((url) => {
+      const img = document.createElement("img");
+      img.src = url;
+      img.onclick = () => {
+        document.querySelectorAll(".avatar-pick img").forEach(el => el.classList.remove("sel"));
+        img.classList.add("sel");
+        myAvatar = url;
+      };
+      avatarContainer.appendChild(img);
+      if (url === myAvatar) img.classList.add("sel");
+    });
+    if (!document.querySelector(".avatar-pick img.sel")) {
+      const first = avatarContainer.querySelector("img");
+      if (first) first.classList.add("sel");
+    }
+  }
+
+  document.getElementById("avatarFileInput").onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const form = new FormData();
+    form.append("image", file);
+
+    try {
+      const res = await fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_KEY, {
+        method: "POST",
+        body: form
+      });
+      const json = await res.json();
+      if (json.success) {
+        const url = json.data.url;
+        if (!presetAvatars.includes(url)) {
+          presetAvatars.push(url);
+        }
+        myAvatar = url;
+        renderAvatars();
+      } else {
+        alert("头像上传失败,请重试");
+      }
+    } catch (err) {
+      alert("上传出错:" + err.message);
+    }
+    e.target.value = "";
+  };
+
+  renderAvatars();
+
+  // ========== 进入聊天 ==========
   document.getElementById("goBtn").onclick = () => {
     const nick = document.getElementById("nick").value.trim();
     if (!nick) return alert("请输入昵称");
     myName = nick;
-    document.getElementById("title").textContent = "💬 聊天室 - " + myName;
+    document.getElementById("title").textContent = "💬 聊天室 · " + myName;
     document.getElementById("login").classList.add("hidden");
     document.getElementById("room").classList.remove("hidden");
 
@@ -102,11 +389,20 @@
     });
   };
 
-  // 显示消息
+  document.getElementById("nick").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("goBtn").click();
+  });
+
+  // ========== 显示消息 ==========
   function showMessage(data) {
     const { name, text, image, avatar } = data;
     const row = document.createElement("div");
     row.className = "msg-row";
+
+    // 如果发送者是 AI,用特殊样式和头像
+    if (name === "AI助手") {
+      row.classList.add("ai");
+    }
 
     const av = document.createElement("img");
     av.className = "avatar";
@@ -129,6 +425,7 @@
     if (image) {
       const imgEl = document.createElement("img");
       imgEl.src = image;
+      imgEl.onclick = () => window.open(image, "_blank");
       content.appendChild(imgEl);
     }
 
@@ -138,16 +435,86 @@
     document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
   }
 
-  // 发送文字
+  // ========== 调用 DeepSeek API ==========
+  async function askAI(userMessage) {
+    const payload = {
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: "你是一个活泼友好的助手,正在和宁波第二艺术实验学校的学生们聊天。语气轻松自然,回答尽量简洁。用中文回复。" },
+        { role: "user", content: userMessage }
+      ],
+      temperature: 0.8,
+      max_tokens: 500
+    };
+
+    try {
+      const res = await fetch(DEEPSEEK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + DEEPSEEK_KEY
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const json = await res.json();
+      if (json.choices && json.choices.length > 0) {
+        return json.choices[0].message.content;
+      } else {
+        return "(AI 暂时无法回答,请稍后再试)";
+      }
+    } catch (err) {
+      return "(调用 AI 出错: " + err.message + ")";
+    }
+  }
+
+  // ========== 发送文字 ==========
   function send() {
     const inp = document.getElementById("say");
     const txt = inp.value.trim();
     if (!txt || !drone) return;
+
+    // 发用户消息
     drone.publish({
       room: "observable-room",
       message: { name: myName, text: txt, avatar: myAvatar, image: null }
     });
+
     inp.value = "";
+
+    // 检测是否 @AI
+    if (txt.startsWith("@AI") || txt.startsWith("@ai")) {
+      const question = txt.replace(/^@AI\s*/i, "").trim();
+      if (question) {
+        // 显示“AI 正在输入...”
+        const loadingRow = document.createElement("div");
+        loadingRow.className = "msg-row ai";
+        loadingRow.id = "ai-loading";
+        const loadingAv = document.createElement("img");
+        loadingAv.className = "avatar";
+        loadingAv.src = AI_AVATAR;
+        const loadingContent = document.createElement("div");
+        loadingContent.className = "msg-content";
+        loadingContent.innerHTML = '<div class="name">AI助手</div><div class="text">正在思考...</div>';
+        loadingRow.appendChild(loadingAv);
+        loadingRow.appendChild(loadingContent);
+        document.getElementById("msgs").appendChild(loadingRow);
+        document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
+
+        // 请求 AI
+        askAI(question).then(reply => {
+          // 移除加载提示
+          const loadEl = document.getElementById("ai-loading");
+          if (loadEl) loadEl.remove();
+
+          // 发 AI 回复
+          drone.publish({
+            room: "observable-room",
+            message: { name: "AI助手", text: reply, avatar: AI_AVATAR, image: null }
+          });
+        });
+      }
+    }
   }
 
   document.getElementById("sendBtn").onclick = send;
@@ -155,7 +522,7 @@
     if (e.key === "Enter") send();
   });
 
-  // 上传图片
+  // ========== 发送图片 ==========
   document.getElementById("imgInput").onchange = async (e) => {
     const file = e.target.files[0];
     if (!file || !drone) return;
