@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>膏罪聊天室</title>
+  <title>聊天室</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{
@@ -105,6 +105,7 @@
       user-select: none;
     }
     
+    /* 底部栏 */
     .bar-wrapper{
       flex-shrink: 0;
       background: #fff;
@@ -325,12 +326,12 @@
 
 <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
 <script>
-  // 配置
-  const CHANNEL_ID = "SwLZhbOCTTsAcXaR";
-  const IMGBB_KEY = "de1365709bd94acab828a7d6e6f35e36";
-
-  // 在这里填你自己的 DeepSeek Key
-  const DEEPSEEK_API_KEY = "sk-ff9ca06276354d6eb29fa3909294d6eb";
+  // ========== 配置（改这里）==========
+  const CHANNEL_ID = "你的Scaledrone Channel ID";
+  const IMGBB_KEY = "你的ImgBB API Key";
+  const DEEPSEEK_KEY = "你的DeepSeek API Key";
+  const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
+  // ===================================
 
   const AI_AVATAR = "https://api.dicebear.com/7.x/bottts/svg?seed=deepseek";
   const presetAvatars = [
@@ -345,6 +346,7 @@
   let drone, myName = "", myAvatar = presetAvatars[0];
   let previousMemberIds = [];
 
+  // ========== 系统消息 ==========
   function showSystemMsg(text) {
     const div = document.createElement("div");
     div.className = "system-msg";
@@ -353,7 +355,9 @@
     document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
   }
 
+  // ========== 头像选择 ==========
   const avatarContainer = document.getElementById("avatars");
+
   function renderAvatars() {
     avatarContainer.innerHTML = "";
     presetAvatars.forEach((url) => {
@@ -376,19 +380,26 @@
   document.getElementById("avatarFileInput").onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     const form = new FormData();
     form.append("image", file);
+
     try {
       const res = await fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_KEY, {
-        method: "POST", body: form
+        method: "POST",
+        body: form
       });
       const json = await res.json();
       if (json.success) {
         const url = json.data.url;
-        if (!presetAvatars.includes(url)) presetAvatars.push(url);
+        if (!presetAvatars.includes(url)) {
+          presetAvatars.push(url);
+        }
         myAvatar = url;
         renderAvatars();
-      } else alert("头像上传失败");
+      } else {
+        alert("头像上传失败，请重试");
+      }
     } catch (err) {
       alert("上传出错：" + err.message);
     }
@@ -397,6 +408,7 @@
 
   renderAvatars();
 
+  // ========== 进入聊天 ==========
   document.getElementById("goBtn").onclick = () => {
     const nick = document.getElementById("nick").value.trim();
     if (!nick) return alert("请输入昵称");
@@ -408,19 +420,32 @@
 
     drone.on("open", (error) => {
       if (error) return console.error(error);
+      
       const room = drone.subscribe("observable-room");
+      
       room.on("members", (members) => {
         const currentIds = members.map(m => m.id);
+        
         if (previousMemberIds.length === 0) {
           previousMemberIds = currentIds;
           return;
         }
+
         const joined = members.filter(m => !previousMemberIds.includes(m.id));
         joined.forEach(m => {
-          if (m.clientData?.name) showSystemMsg(m.clientData.name + " 已加入该聊天");
+          if (m.clientData && m.clientData.name) {
+            showSystemMsg(m.clientData.name + " 已加入该聊天");
+          }
         });
+
+        const leftIds = previousMemberIds.filter(id => !currentIds.includes(id));
+        leftIds.forEach(id => {
+          // 名字从之前记录中取
+        });
+
         previousMemberIds = currentIds;
       });
+
       room.on("message", (msg) => {
         if (msg.data.name && msg.data.name !== "__system__") {
           showMessage(msg.data);
@@ -433,10 +458,12 @@
     if (e.key === "Enter") document.getElementById("goBtn").click();
   });
 
+  // ========== 显示消息 ==========
   function showMessage(data) {
     const { name, text, image, avatar } = data;
     const row = document.createElement("div");
     row.className = "msg-row";
+
     if (name === "AI助手") row.classList.add("ai");
 
     const av = document.createElement("img");
@@ -456,21 +483,23 @@
 
     content.appendChild(nameEl);
     content.appendChild(textEl);
+
     if (image) {
       const imgEl = document.createElement("img");
       imgEl.src = image;
       imgEl.onclick = () => window.open(image, "_blank");
       content.appendChild(imgEl);
     }
+
     row.appendChild(av);
     row.appendChild(content);
     document.getElementById("msgs").appendChild(row);
     document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
   }
 
-  // 用中转解决跨域，能直接在浏览器调用DeepSeek
+  // ========== DeepSeek ==========
   async function askAI(userMessage) {
-    const body = {
+    const payload = {
       model: "deepseek-chat",
       messages: [
         { role: "system", content: "你是一个活泼友好的助手，正在和宁波第二艺术实验学校的学生们聊天。语气轻松自然，回答尽量简洁。用中文回复。" },
@@ -481,27 +510,27 @@
     };
 
     try {
-      // 公共中转接口 解决跨域
-      const res = await fetch("https://cors-anywhere.herokuapp.com/https://api.deepseek.com/v1/chat/completions", {
+      const res = await fetch(DEEPSEEK_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + DEEPSEEK_API_KEY
+          "Authorization": "Bearer " + DEEPSEEK_KEY
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(payload)
       });
 
       const json = await res.json();
       if (json.choices && json.choices.length > 0) {
         return json.choices[0].message.content;
       } else {
-        return "AI 暂时无法回答";
+        return "（AI 暂时无法回答）";
       }
     } catch (err) {
-      return "调用 AI 出错，请稍后再试";
+      return "（调用 AI 出错: " + err.message + "）";
     }
   }
 
+  // ========== 发送 ==========
   function send() {
     const inp = document.getElementById("say");
     const txt = inp.value.trim();
@@ -516,30 +545,31 @@
 
     if (txt.startsWith("@AI") || txt.startsWith("@ai")) {
       const question = txt.replace(/^@AI\s*/i, "").trim();
-      if (!question) return;
+      if (question) {
+        const loadingRow = document.createElement("div");
+        loadingRow.className = "msg-row ai";
+        loadingRow.id = "ai-loading";
+        const loadingAv = document.createElement("img");
+        loadingAv.className = "avatar";
+        loadingAv.src = AI_AVATAR;
+        const loadingContent = document.createElement("div");
+        loadingContent.className = "msg-content";
+        loadingContent.innerHTML = '<div class="name">AI助手</div><div class="text">正在思考...</div>';
+        loadingRow.appendChild(loadingAv);
+        loadingRow.appendChild(loadingContent);
+        document.getElementById("msgs").appendChild(loadingRow);
+        document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
 
-      const loadingRow = document.createElement("div");
-      loadingRow.className = "msg-row ai";
-      loadingRow.id = "ai-loading";
-      const loadingAv = document.createElement("img");
-      loadingAv.className = "avatar";
-      loadingAv.src = AI_AVATAR;
-      const loadingContent = document.createElement("div");
-      loadingContent.className = "msg-content";
-      loadingContent.innerHTML = '<div class="name">AI助手</div><div class="text">正在思考...</div>';
-      loadingRow.appendChild(loadingAv);
-      loadingRow.appendChild(loadingContent);
-      document.getElementById("msgs").appendChild(loadingRow);
-      document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
+        askAI(question).then(reply => {
+          const loadEl = document.getElementById("ai-loading");
+          if (loadEl) loadEl.remove();
 
-      askAI(question).then(reply => {
-        const loadEl = document.getElementById("ai-loading");
-        if (loadEl) loadEl.remove();
-        drone.publish({
-          room: "observable-room",
-          message: { name: "AI助手", text: reply, avatar: AI_AVATAR, image: null }
+          drone.publish({
+            room: "observable-room",
+            message: { name: "AI助手", text: reply, avatar: AI_AVATAR, image: null }
+          });
         });
-      });
+      }
     }
   }
 
@@ -548,14 +578,18 @@
     if (e.key === "Enter") send();
   });
 
+  // ========== 图片 ==========
   document.getElementById("imgInput").onchange = async (e) => {
     const file = e.target.files[0];
     if (!file || !drone) return;
+
     const form = new FormData();
     form.append("image", file);
+
     try {
       const res = await fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_KEY, {
-        method: "POST", body: form
+        method: "POST",
+        body: form
       });
       const json = await res.json();
       if (json.success) {
@@ -564,7 +598,9 @@
           room: "observable-room",
           message: { name: myName, text: "", avatar: myAvatar, image: url }
         });
-      } else alert("图片上传失败");
+      } else {
+        alert("图片上传失败");
+      }
     } catch (err) {
       alert("上传出错：" + err.message);
     }
