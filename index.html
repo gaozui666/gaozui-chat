@@ -1,105 +1,446 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>6位号语音通话</title>
-    <style>
-        body{max-width:450px;margin:50px auto;padding:0 20px;font-family:微软雅黑}
-        .item{margin:20px 0}
-        input{width:200px;padding:12px;font-size:18px;text-align:center;letter-spacing:6px}
-        button{padding:12px 25px;font-size:16px;border:none;border-radius:6px;background:#1677ff;color:#fff;cursor:pointer;margin:8px}
-        #tip{color:#666;margin-top:15px}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>多人实时语音通话 - 免费</title>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .card {
+      background: white;
+      border-radius: 32px;
+      padding: 24px 20px 32px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+    }
+    h2 { margin: 0 0 8px; color: #333; text-align: center; }
+    .sub { text-align: center; color: #666; margin-bottom: 24px; font-size: 14px; }
+    .my-id-section {
+      background: #f0f0f0;
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .my-id-value {
+      font-size: 18px;
+      font-weight: bold;
+      font-family: monospace;
+      word-break: break-all;
+      background: white;
+      padding: 10px;
+      border-radius: 12px;
+      margin: 10px 0;
+    }
+    button {
+      background: #667eea;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 40px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 4px;
+      transition: 0.2s;
+    }
+    button:active { transform: scale(0.97); }
+    button.primary { background: #48bb78; }
+    button.danger { background: #e53e3e; }
+    button.warning { background: #ed8936; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 40px;
+      font-size: 16px;
+      margin: 8px 0;
+      text-align: center;
+    }
+    .room-section {
+      border-top: 2px solid #e2e8f0;
+      padding-top: 20px;
+      margin-top: 10px;
+    }
+    .participants {
+      background: #f7fafc;
+      border-radius: 20px;
+      padding: 16px;
+      margin: 15px 0;
+    }
+    .participant {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: white;
+      border-radius: 40px;
+      margin: 8px 0;
+    }
+    .participant-name {
+      font-weight: 500;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .participant-status {
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: #c6f6d5;
+      color: #22543d;
+    }
+    .participant-status.connecting { background: #fed7d7; color: #742a2a; }
+    .status {
+      background: #f7fafc;
+      border-radius: 40px;
+      padding: 12px;
+      margin: 15px 0;
+      font-size: 14px;
+      font-weight: 500;
+      text-align: center;
+    }
+    .inline-input {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .inline-input input { flex: 1; margin: 0; }
+    .inline-input button { margin: 0; white-space: nowrap; }
+    .footer { text-align: center; font-size: 11px; color: #aaa; margin-top: 20px; }
+    @media (max-width: 600px) {
+      .participant-name { font-size: 12px; }
+      button { padding: 8px 16px; font-size: 13px; }
+    }
+  </style>
 </head>
 <body>
-    <h2>语音通话</h2>
-    <div class="item">
-        <input type="text" id="roomNum" maxlength="6" placeholder="输入6位数字">
+<div class="container">
+  <div class="card">
+    <h2>👥 多人实时语音通话</h2>
+    <div class="sub">点对点Mesh网络 · 免费 · 所有人对所有人说话</div>
+
+    <!-- 自己的ID -->
+    <div class="my-id-section">
+      <div>📱 你的通话ID</div>
+      <div class="my-id-value" id="myId">加载中...</div>
+      <button id="copyBtn">📋 复制我的ID</button>
     </div>
-    <div class="item">
-        <button onclick="createRoom()">创建房间发起通话</button>
-        <button onclick="joinRoom()">加入房间接听</button>
-        <button onclick="endCall()" style="background:#f53f3f">挂断</button>
+
+    <!-- 添加参与者 -->
+    <div class="room-section">
+      <div style="font-weight:600; margin-bottom:8px;">➕ 添加参与者</div>
+      <div class="inline-input">
+        <input type="text" id="targetId" placeholder="输入对方的通话ID">
+        <button id="addBtn" class="primary">➕ 添加</button>
+      </div>
+      <div style="font-size:12px; color:#888; margin-top:6px;">
+        💡 把对方的ID加进来后，对方也要把你的ID加进去，才能双向通话
+      </div>
     </div>
-    <div id="tip">状态：等待操作</div>
-    <audio id="audioPlay" autoplay hidden>
 
-    <script>
-        const ICE_CONFIG = {
-            iceServers: [
-                {urls:"stun:stun.l.google.com:19302"}
-            ]
-        }
-        let pc, localStream, roomId
-        let signalCache = {}
+    <!-- 房间成员 -->
+    <div class="participants">
+      <div style="font-weight:600; margin-bottom:12px;">👥 房间成员 (<span id="participantCount">0</span>)</div>
+      <div id="participantsList">
+        <div style="color:#aaa; text-align:center; padding:16px;">暂无成员，添加对方ID开始通话</div>
+      </div>
+    </div>
 
-        const tip = document.getElementById('tip')
-        const audioPlay = document.getElementById('audioPlay')
-        const inputDom = document.getElementById('roomNum')
+    <!-- 状态和控制 -->
+    <div class="status" id="status">
+      ⚪ 初始化中...
+    </div>
 
-        // 获取麦克风
-        async function getMic(){
-            try{
-                localStream = await navigator.mediaDevices.getUserMedia({audio:true})
-                return true
-            }catch{
-                tip.innerText = "请允许麦克风权限"
-                return false
-            }
-        }
+    <div style="display: flex; gap: 12px; justify-content: center;">
+      <button id="micBtn" class="warning" style="background:#48bb78;">🎤 关闭麦克风</button>
+      <button id="hangupAllBtn" class="danger">❌ 退出房间</button>
+    </div>
+    <div class="footer">
+      💡 每个人都要把其他人的ID添加进来<br>
+      需要允许麦克风权限 · 人越多对网络要求越高（建议≤5人）
+    </div>
+  </div>
+</div>
 
-        // 创建房间
-        async function createRoom(){
-            roomId = inputDom.value.trim()
-            if(roomId.length!==6) return tip.innerText="请输入6位数字"
-            if(!await getMic())return
+<script>
+  // ============ 配置 ============
+  const peer = new Peer(undefined, {
+    host: '0.peerjs.com',
+    port: 443,
+    path: '/',
+    secure: true,
+    debug: 0
+  });
 
-            pc = new RTCPeerConnection(ICE_CONFIG)
-            localStream.getAudioTracks().forEach(t=>pc.addTrack(t,localStream))
-            pc.ontrack = e=>audioPlay.srcObject = e.streams[0]
-            pc.onicecandidate = e=>{
-                if(e.candidate) signalCache[roomId] = JSON.stringify(pc.localDescription)
-            }
+  let localStream = null;
+  let isMicMuted = false;
+  // 存储所有连接: peerId -> { call, stream }
+  const connections = new Map();
 
-            const offer = await pc.createOffer()
-            await pc.setLocalDescription(offer)
-            tip.innerText = `房间${roomId}已创建，等待对方加入`
-        }
+  const statusDiv = document.getElementById('status');
+  const participantsListDiv = document.getElementById('participantsList');
+  const participantCountSpan = document.getElementById('participantCount');
+  const myIdSpan = document.getElementById('myId');
+  const micBtn = document.getElementById('micBtn');
+  const hangupAllBtn = document.getElementById('hangupAllBtn');
+  const addBtn = document.getElementById('addBtn');
+  const targetInput = document.getElementById('targetId');
 
-        // 加入房间
-        async function joinRoom(){
-            roomId = inputDom.value.trim()
-            if(roomId.length!==6) return tip.innerText="请输入6位数字"
-            if(!await getMic())return
+  function setStatus(text, isError = false) {
+    statusDiv.innerHTML = text;
+    statusDiv.style.background = isError ? '#fff5f5' : '#f7fafc';
+    statusDiv.style.color = isError ? '#c53030' : '#2d3748';
+  }
 
-            pc = new RTCPeerConnection(ICE_CONFIG)
-            localStream.getAudioTracks().forEach(t=>pc.addTrack(t,localStream))
-            pc.ontrack = e=>audioPlay.srcObject = e.streams[0]
-            pc.onicecandidate = e=>{
-                if(e.candidate) signalCache[roomId] = JSON.stringify(pc.localDescription)
-            }
+  // 刷新成员列表UI
+  function updateParticipantsUI() {
+    const participants = Array.from(connections.keys());
+    participantCountSpan.innerText = participants.length;
+    
+    if (participants.length === 0) {
+      participantsListDiv.innerHTML = '<div style="color:#aaa; text-align:center; padding:16px;">暂无成员，添加对方ID开始通话</div>';
+      return;
+    }
+    
+    participantsListDiv.innerHTML = participants.map(peerId => `
+      <div class="participant">
+        <span class="participant-name">${peerId.slice(0, 12)}${peerId.length > 12 ? '...' : ''}</span>
+        <span class="participant-status">🎙️ 通话中</span>
+      </div>
+    `).join('');
+  }
 
-            // 读取房间缓存信息配对
-            let remoteInfo = signalCache[roomId]
-            if(!remoteInfo){
-                tip.innerText="暂无房间信息，稍等重试"
-                return
-            }
-            let desc = JSON.parse(remoteInfo)
-            await pc.setRemoteDescription(desc)
-            const ans = await pc.createAnswer()
-            await pc.setLocalDescription(ans)
-            tip.innerText="已接入通话"
-        }
+  // 获取麦克风
+  async function getMic() {
+    if (localStream && localStream.getAudioTracks().length > 0 && localStream.getAudioTracks()[0].readyState === 'live') {
+      return localStream;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStream = stream;
+      
+      // 监听麦克风状态
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !isMicMuted;
+      }
+      
+      return stream;
+    } catch (err) {
+      console.error('麦克风错误:', err);
+      setStatus('❌ 无法获取麦克风权限，请检查浏览器设置', true);
+      throw err;
+    }
+  }
 
-        // 挂断通话
-        function endCall(){
-            if(pc) pc.close()
-            if(localStream) localStream.getTracks().forEach(t=>t.stop())
-            audioPlay.srcObject = null
-            tip.innerText="通话已结束"
-        }
-    </script>
+  // 播放对方声音
+  function playRemoteAudio(stream, peerId) {
+    // 避免重复添加
+    if (connections.get(peerId)?.audioElement) return;
+    
+    const audio = new Audio();
+    audio.srcObject = stream;
+    audio.autoplay = true;
+    audio.onended = () => console.log(`音频流结束: ${peerId}`);
+    
+    const conn = connections.get(peerId);
+    if (conn) {
+      conn.audioElement = audio;
+    }
+  }
+
+  // 断开与某个人的连接
+  function disconnectFrom(peerId) {
+    const conn = connections.get(peerId);
+    if (conn) {
+      if (conn.call) conn.call.close();
+      if (conn.audioElement) {
+        conn.audioElement.pause();
+        conn.audioElement.srcObject = null;
+      }
+      connections.delete(peerId);
+      console.log(`已断开: ${peerId}`);
+      updateParticipantsUI();
+    }
+  }
+
+  // 断开所有连接
+  function disconnectAll() {
+    for (const peerId of connections.keys()) {
+      disconnectFrom(peerId);
+    }
+  }
+
+  // 呼叫对方
+  async function callPeer(targetId) {
+    if (targetId === peer.id) {
+      setStatus('⚠️ 不能添加自己', true);
+      return false;
+    }
+    if (connections.has(targetId)) {
+      setStatus('⚠️ 该成员已在房间中', true);
+      return false;
+    }
+    
+    setStatus(`📞 正在连接 ${targetId.slice(0,8)}...`);
+    
+    try {
+      const stream = await getMic();
+      const call = peer.call(targetId, stream);
+      
+      connections.set(targetId, { call, stream: null, audioElement: null });
+      
+      call.on('stream', (remoteStream) => {
+        console.log(`收到 ${targetId} 的音频流`);
+        playRemoteAudio(remoteStream, targetId);
+        const conn = connections.get(targetId);
+        if (conn) conn.stream = remoteStream;
+        setStatus(`✅ 已连接到 ${targetId.slice(0,8)}`);
+        updateParticipantsUI();
+      });
+      
+      call.on('close', () => {
+        console.log(`${targetId} 断开`);
+        disconnectFrom(targetId);
+        setStatus(`🔌 ${targetId.slice(0,8)} 已断开`);
+      });
+      
+      call.on('error', (err) => {
+        console.error(`连接 ${targetId} 错误:`, err);
+        disconnectFrom(targetId);
+        setStatus(`❌ 连接 ${targetId.slice(0,8)} 失败`, true);
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('呼叫失败:', err);
+      setStatus('❌ 无法获取麦克风', true);
+      return false;
+    }
+  }
+
+  // 接收来电
+  peer.on('call', async (incomingCall) => {
+    const callerId = incomingCall.peer;
+    console.log(`收到来电: ${callerId}`);
+    
+    if (connections.has(callerId)) {
+      console.log(`已连接 ${callerId}，忽略重复来电`);
+      incomingCall.close();
+      return;
+    }
+    
+    setStatus(`📞 收到 ${callerId.slice(0,8)} 的请求，正在接听...`);
+    
+    try {
+      const stream = await getMic();
+      incomingCall.answer(stream);
+      
+      connections.set(callerId, { call: incomingCall, stream: null, audioElement: null });
+      
+      incomingCall.on('stream', (remoteStream) => {
+        console.log(`收到 ${callerId} 的音频流`);
+        playRemoteAudio(remoteStream, callerId);
+        const conn = connections.get(callerId);
+        if (conn) conn.stream = remoteStream;
+        setStatus(`✅ 已连接到 ${callerId.slice(0,8)}`);
+        updateParticipantsUI();
+      });
+      
+      incomingCall.on('close', () => {
+        disconnectFrom(callerId);
+        setStatus(`🔌 ${callerId.slice(0,8)} 已断开`);
+      });
+      
+      incomingCall.on('error', (err) => {
+        console.error(`接听 ${callerId} 错误:`, err);
+        disconnectFrom(callerId);
+      });
+      
+    } catch (err) {
+      console.error('接听失败:', err);
+      setStatus('❌ 无法获取麦克风，接听失败', true);
+    }
+  });
+
+  // 添加按钮
+  addBtn.onclick = async () => {
+    const targetId = targetInput.value.trim();
+    if (!targetId) {
+      setStatus('⚠️ 请输入对方的通话ID', true);
+      return;
+    }
+    targetInput.value = '';
+    await callPeer(targetId);
+  };
+
+  // 切换麦克风
+  micBtn.onclick = () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        isMicMuted = !isMicMuted;
+        audioTrack.enabled = !isMicMuted;
+        micBtn.innerText = isMicMuted ? '🎤 开启麦克风' : '🎤 关闭麦克风';
+        micBtn.style.background = isMicMuted ? '#e53e3e' : '#48bb78';
+        setStatus(isMicMuted ? '🔇 麦克风已关闭' : '🎙️ 麦克风已开启');
+      }
+    }
+  };
+
+  // 退出房间
+  hangupAllBtn.onclick = () => {
+    disconnectAll();
+    setStatus('⚪ 已退出房间');
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      localStream = null;
+    }
+  };
+
+  // 复制ID
+  document.getElementById('copyBtn').onclick = () => {
+    if (myIdSpan.innerText && myIdSpan.innerText !== '加载中...') {
+      navigator.clipboard.writeText(myIdSpan.innerText);
+      setStatus('✅ 通话ID已复制，可以发给朋友了');
+    }
+  };
+
+  // PeerJS 初始化
+  peer.on('open', (id) => {
+    myIdSpan.innerText = id;
+    setStatus('✅ 在线，可以开始添加成员');
+    console.log('我的Peer ID:', id);
+  });
+
+  peer.on('error', (err) => {
+    console.error('PeerJS错误:', err);
+    setStatus('⚠️ 连接服务器失败，刷新页面重试', true);
+  });
+
+  // 页面关闭时清理
+  window.addEventListener('beforeunload', () => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    for (const conn of connections.values()) {
+      if (conn.call) conn.call.close();
+    }
+    peer.destroy();
+  });
+</script>
 </body>
 </html>
