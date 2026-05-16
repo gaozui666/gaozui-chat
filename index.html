@@ -3,111 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>跨网实时语音通话 WebRTC</title>
+    <title>6位号语音通话</title>
     <style>
-        *{box-sizing: border-box;margin:0;padding:0;}
-        body{max-width:650px;margin:30px auto;padding:0 20px;font-family:system-ui;}
-        .card{border:1px #eee solid;border-radius:12px;padding:20px;margin:15px 0;}
-        button{padding:10px 18px;margin:6px;border:none;border-radius:6px;cursor:pointer;font-size:15px;}
-        #openMic{background:#23c16c;color:#fff;}
-        #createOffer{background:#2185f5;color:#fff;}
-        #answerBtn{background:#722ed1;color:#fff;}
-        #hangUp{background:#f53f3f;color:#fff;}
-        textarea{width:100%;height:120px;margin:10px 0;padding:8px;border:1px #ddd solid;border-radius:6px;}
-        .status{margin:12px 0;color:#555;}
+        body{max-width:450px;margin:50px auto;padding:0 20px;font-family:微软雅黑}
+        .item{margin:20px 0}
+        input{width:200px;padding:12px;font-size:18px;text-align:center;letter-spacing:6px}
+        button{padding:12px 25px;font-size:16px;border:none;border-radius:6px;background:#1677ff;color:#fff;cursor:pointer;margin:8px}
+        #tip{color:#666;margin-top:15px}
     </style>
 </head>
 <body>
-    <h2>跨网语音通话</h2>
-    <div class="card">
-        <button id="openMic">开启麦克风</button>
-        <p class="status" id="status">状态：待机</p>
+    <h2>语音通话</h2>
+    <div class="item">
+        <input type="text" id="roomNum" maxlength="6" placeholder="输入6位数字">
     </div>
-
-    <div class="card">
-        <button id="createOffer">发起通话</button>
-        <button id="answerBtn">接听通话</button>
-        <button id="hangUp">挂断通话</button>
+    <div class="item">
+        <button onclick="createRoom()">创建房间发起通话</button>
+        <button onclick="joinRoom()">加入房间接听</button>
+        <button onclick="endCall()" style="background:#f53f3f">挂断</button>
     </div>
-
-    <div class="card">
-        <p>我方信息，复制发送给对方：</p>
-        <textarea id="localInfo" readonly></textarea>
-        <p>粘贴对方信息：</p>
-        <textarea id="remoteInfo" placeholder="粘贴对方发来的文本"></textarea>
-    </div>
-
-    <audio id="remoteAudio" autoplay>
+    <div id="tip">状态：等待操作</div>
+    <audio id="audioPlay" autoplay hidden>
 
     <script>
-        // 免费公开STUN服务器，实现跨网穿透
-        const config = {
+        const ICE_CONFIG = {
             iceServers: [
-                {urls: 'stun:stun.l.google.com:19302'},
-                {urls: 'stun:stun1.l.google.com:19302'}
+                {urls:"stun:stun.l.google.com:19302"}
             ]
-        };
+        }
+        let pc, localStream, roomId
+        let signalCache = {}
 
-        let peerConn;
-        let localStream;
-        const remoteAudio = document.getElementById('remoteAudio');
-        const statusText = document.getElementById('status');
-        const localInfo = document.getElementById('localInfo');
-        const remoteInfo = document.getElementById('remoteInfo');
+        const tip = document.getElementById('tip')
+        const audioPlay = document.getElementById('audioPlay')
+        const inputDom = document.getElementById('roomNum')
 
-        // 打开麦克风
-        document.getElementById('openMic').addEventListener('click',async ()=>{
+        // 获取麦克风
+        async function getMic(){
             try{
-                localStream = await navigator.mediaDevices.getUserMedia({audio:true});
-                statusText.innerText = "状态：麦克风已就绪，可以通话";
-            }catch(e){
-                statusText.innerText = "麦克风开启失败，请授权权限";
+                localStream = await navigator.mediaDevices.getUserMedia({audio:true})
+                return true
+            }catch{
+                tip.innerText = "请允许麦克风权限"
+                return false
             }
-        });
+        }
 
-        // 发起呼叫
-        document.getElementById('createOffer').addEventListener('click',async ()=>{
-            if(!localStream) return alert("请先开启麦克风");
-            peerConn = new RTCPeerConnection(config);
-            localStream.getTracks().forEach(track=>peerConn.addTrack(track,localStream));
+        // 创建房间
+        async function createRoom(){
+            roomId = inputDom.value.trim()
+            if(roomId.length!==6) return tip.innerText="请输入6位数字"
+            if(!await getMic())return
 
-            peerConn.ontrack = e=>remoteAudio.srcObject = e.streams[0];
-            peerConn.onicecandidate = e=>{
-                if(e.candidate) localInfo.value = JSON.stringify(peerConn.localDescription);
-            };
+            pc = new RTCPeerConnection(ICE_CONFIG)
+            localStream.getAudioTracks().forEach(t=>pc.addTrack(t,localStream))
+            pc.ontrack = e=>audioPlay.srcObject = e.streams[0]
+            pc.onicecandidate = e=>{
+                if(e.candidate) signalCache[roomId] = JSON.stringify(pc.localDescription)
+            }
 
-            const offer = await peerConn.createOffer();
-            await peerConn.setLocalDescription(offer);
-            statusText.innerText = "状态：已发起呼叫，发送信息给对方";
-        });
+            const offer = await pc.createOffer()
+            await pc.setLocalDescription(offer)
+            tip.innerText = `房间${roomId}已创建，等待对方加入`
+        }
 
-        // 接听呼叫
-        document.getElementById('answerBtn').addEventListener('click',async ()=>{
-            if(!localStream || !remoteInfo.value) return alert("请开启麦克风并粘贴对方信息");
-            const remoteDesc = JSON.parse(remoteInfo.value);
-            peerConn = new RTCPeerConnection(config);
-            localStream.getTracks().forEach(track=>peerConn.addTrack(track,localStream));
+        // 加入房间
+        async function joinRoom(){
+            roomId = inputDom.value.trim()
+            if(roomId.length!==6) return tip.innerText="请输入6位数字"
+            if(!await getMic())return
 
-            peerConn.ontrack = e=>remoteAudio.srcObject = e.streams[0];
-            peerConn.onicecandidate = e=>{
-                if(e.candidate) localInfo.value = JSON.stringify(peerConn.localDescription);
-            };
+            pc = new RTCPeerConnection(ICE_CONFIG)
+            localStream.getAudioTracks().forEach(t=>pc.addTrack(t,localStream))
+            pc.ontrack = e=>audioPlay.srcObject = e.streams[0]
+            pc.onicecandidate = e=>{
+                if(e.candidate) signalCache[roomId] = JSON.stringify(pc.localDescription)
+            }
 
-            await peerConn.setRemoteDescription(remoteDesc);
-            const answer = await peerConn.createAnswer();
-            await peerConn.setLocalDescription(answer);
-            statusText.innerText = "状态：等待对方确认连接";
-        });
+            // 读取房间缓存信息配对
+            let remoteInfo = signalCache[roomId]
+            if(!remoteInfo){
+                tip.innerText="暂无房间信息，稍等重试"
+                return
+            }
+            let desc = JSON.parse(remoteInfo)
+            await pc.setRemoteDescription(desc)
+            const ans = await pc.createAnswer()
+            await pc.setLocalDescription(ans)
+            tip.innerText="已接入通话"
+        }
 
-        // 挂断
-        document.getElementById('hangUp').addEventListener('click',()=>{
-            if(peerConn) peerConn.close();
-            if(localStream) localStream.getTracks().forEach(track=>track.stop());
-            remoteAudio.srcObject = null;
-            localInfo.value = '';
-            remoteInfo.value = '';
-            statusText.innerText = "状态：通话已挂断";
-        });
+        // 挂断通话
+        function endCall(){
+            if(pc) pc.close()
+            if(localStream) localStream.getTracks().forEach(t=>t.stop())
+            audioPlay.srcObject = null
+            tip.innerText="通话已结束"
+        }
     </script>
 </body>
 </html>
