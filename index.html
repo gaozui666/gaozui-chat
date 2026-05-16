@@ -1,613 +1,294 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>聊天室</title>
-  <link rel="icon" type="image/png" href="0DF9B2A5-1C82-4DE9-B5FD-109AFBD18EA0.jpeg">
+  <title>免费实时语音通话</title>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: linear-gradient(135deg, #e8ecf1 0%, #d5dce6 100%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
-      padding: 10px;
-    }
-    .cont{
-      width: 100%;
-      max-width: 420px;
-      height: 95vh;
-      max-height: 700px;
-      background: #fff;
-      border-radius: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      margin: 0;
+      padding: 20px;
       display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      position: relative;
+      justify-content: center;
+      align-items: center;
     }
-    .top{
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      color: #fff;
-      padding: 14px 20px;
+    .card {
+      background: white;
+      border-radius: 32px;
+      padding: 24px 20px 32px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
       text-align: center;
-      font-weight: 700;
-      font-size: 17px;
-      letter-spacing: 0.3px;
-      flex-shrink: 0;
     }
-    
-    #msgs{
-      flex: 1;
-      overflow-y: auto;
+    h2 { margin: 0 0 8px; color: #333; }
+    .sub { color: #666; margin-bottom: 24px; font-size: 14px; }
+    .my-id-box {
+      background: #f0f0f0;
+      border-radius: 20px;
       padding: 16px;
-      background: #f8f9fb;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+      margin-bottom: 24px;
     }
-    .msg-row{
-      display: flex;
-      align-items: flex-start;
-      margin-bottom: 14px;
-      gap: 10px;
-    }
-    .avatar{
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      object-fit: cover;
-      background: #e2e5ea;
-      border: 2px solid #fff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    }
-    .msg-content{
-      background: #fff;
-      border-radius: 14px;
-      padding: 10px 14px;
-      max-width: 78%;
-      word-break: break-word;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    }
-    .msg-row.ai .msg-content{
-      background: #eef2ff;
-      border: 1px solid #d4d9fc;
-    }
-    .msg-content .name{
-      color: #6366f1;
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .msg-content .text{
-      font-size: 14px;
-      white-space: pre-wrap;
-      line-height: 1.5;
-      color: #1e293b;
-    }
-    .msg-content img{
-      max-width: 100%;
-      max-height: 220px;
-      border-radius: 10px;
-      margin-top: 6px;
-      display: block;
-      cursor: pointer;
-    }
-    
-    .system-msg{
-      text-align: center;
-      margin-bottom: 10px;
-      font-size: 12px;
-      color: #94a3b8;
-      user-select: none;
-    }
-    
-    /* 底部栏 */
-    .bar-wrapper{
-      flex-shrink: 0;
-      background: #fff;
-      border-top: 1px solid #e8eaef;
-    }
-    .bar-inner{
-      display: flex;
-      align-items: center;
-      padding: 10px 12px;
-      gap: 8px;
-    }
-    .bar-inner input[type="text"]{
-      flex: 1;
-      padding: 10px 14px;
-      border: 2px solid #e8eaef;
-      border-radius: 22px;
-      outline: none;
-      font-size: 14px;
-      background: #f8f9fb;
-      transition: border 0.2s;
-      min-width: 0;
-      order: 2;
-    }
-    .bar-inner input[type="text"]:focus{
-      border-color: #6366f1;
-      background: #fff;
-    }
-    .img-btn{
-      order: 1;
-      background: #94a3b8;
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      width: 38px;
-      height: 38px;
-      font-size: 18px;
-      cursor: pointer;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s;
-    }
-    .img-btn:active{background: #64748b}
-    .send-btn{
-      order: 3;
-      padding: 10px 18px;
-      background: #6366f1;
-      color: #fff;
-      border: none;
-      border-radius: 22px;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 14px;
-      white-space: nowrap;
-      flex-shrink: 0;
-      transition: background 0.2s;
-    }
-    .send-btn:active{background:#4f46e5}
-    #imgInput{display:none}
-    
-    .enter{
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      padding: 30px 24px;
-      gap: 14px;
-      position: relative;
-    }
-    .enter h3{
+    .my-id-label { font-size: 12px; color: #888; margin-bottom: 8px; }
+    .my-id-value {
       font-size: 20px;
-      color: #1e293b;
-      font-weight: 700;
+      font-weight: bold;
+      font-family: monospace;
+      word-break: break-all;
+      background: white;
+      padding: 10px;
+      border-radius: 12px;
+      margin-bottom: 12px;
     }
-    .enter .nick-input{
-      width: 100%;
-      padding: 14px 18px;
-      font-size: 16px;
-      border: 2px solid #e8eaef;
-      border-radius: 14px;
-      outline: none;
-      background: #f8f9fb;
-      transition: border 0.2s;
-    }
-    .enter .nick-input:focus{
-      border-color: #6366f1;
-      background: #fff;
-    }
-    .enter .go-btn{
-      padding: 14px 40px;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      color: #fff;
+    button {
+      background: #667eea;
       border: none;
-      border-radius: 14px;
-      font-size: 16px;
-      cursor: pointer;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 40px;
+      font-size: 14px;
       font-weight: 600;
-      transition: opacity 0.2s;
-      width: 100%;
-      max-width: 260px;
-    }
-    .enter .go-btn:active{opacity:0.85}
-    
-    .avatar-section{
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      width: 100%;
-    }
-    .avatar-section .label{
-      font-size: 13px;
-      color: #888;
-    }
-    .avatar-pick{
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    .avatar-pick img{
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      border: 3px solid transparent;
       cursor: pointer;
-      object-fit: cover;
-      transition: border 0.2s, transform 0.2s;
+      margin: 4px;
+      transition: 0.2s;
     }
-    .avatar-pick img:hover{transform: scale(1.08)}
-    .avatar-pick img.sel{
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+    button:active { transform: scale(0.97); }
+    button.secondary { background: #48bb78; }
+    button.danger { background: #e53e3e; }
+    button:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 40px;
+      font-size: 16px;
+      margin: 8px 0;
+      text-align: center;
     }
-    .upload-avatar-btn{
-      padding: 8px 18px;
-      background: #f1f5f9;
-      color: #475569;
-      border: 2px dashed #cbd5e1;
-      border-radius: 20px;
-      font-size: 13px;
-      cursor: pointer;
+    .status {
+      background: #f7fafc;
+      border-radius: 40px;
+      padding: 12px;
+      margin: 20px 0;
+      font-size: 14px;
       font-weight: 500;
-      transition: background 0.2s;
     }
-    .upload-avatar-btn:active{background:#e2e8f0}
-    #avatarFileInput{display:none}
-    
-    .hidden{display:none!important}
-    
-    #msgs::-webkit-scrollbar{width:5px}
-    #msgs::-webkit-scrollbar-track{background:transparent}
-    #msgs::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:10px}
-
-    .watermark{
-      text-align: center;
-      padding: 6px 12px;
-      font-size: 10px;
-      color: #94a3b8;
-      background: #f8f9fb;
-      flex-shrink: 0;
-      user-select: none;
-      letter-spacing: 0.3px;
-    }
-    .watermark-login{
-      text-align: center;
-      font-size: 11px;
-      color: #94a3b8;
-      position: absolute;
-      bottom: 16px;
-      left: 0;
-      right: 0;
-      user-select: none;
-    }
+    .footer { font-size: 11px; color: #aaa; margin-top: 20px; }
   </style>
 </head>
 <body>
+<div class="card">
+  <h2>🎙️ 实时语音通话</h2>
+  <div class="sub">点对点直连 · 完全免费</div>
 
-<div class="cont">
-  <div class="top" id="title">💬 聊天室</div>
-
-  <div id="login" class="enter">
-    <h3>加入聊天</h3>
-    <input id="nick" class="nick-input" placeholder="输入你的昵称" autocomplete="off">
-    
-    <div class="avatar-section">
-      <span class="label">选择头像</span>
-      <div class="avatar-pick" id="avatars"></div>
-      <input type="file" id="avatarFileInput" accept="image/*">
-      <button class="upload-avatar-btn" onclick="document.getElementById('avatarFileInput').click()">📷 从相册选取</button>
-    </div>
-    
-    <button id="goBtn" class="go-btn">开始聊天</button>
-
-    <div class="watermark-login">
-      本网页属于宁波第二艺术实验学校学生之间聊天工具<br>创作者：601班 高瑜昊
-    </div>
+  <div class="my-id-box">
+    <div class="my-id-label">📱 你的通话ID (发给对方)</div>
+    <div class="my-id-value" id="myId">加载中...</div>
+    <button id="copyBtn">📋 复制我的ID</button>
   </div>
 
-  <div id="room" class="hidden" style="display:flex;flex-direction:column;height:100%">
-    <div id="msgs"></div>
-    
-    <div class="bar-wrapper">
-      <div class="bar-inner">
-        <input type="file" id="imgInput" accept="image/*">
-        <button class="img-btn" onclick="document.getElementById('imgInput').click()">🖼️</button>
-        <input id="say" placeholder="输入消息，@AI 可提问" autocomplete="off">
-        <button class="send-btn" id="sendBtn">发送</button>
-      </div>
-      <div class="watermark">
-        本网页属于宁波第二艺术实验学校学生之间聊天工具 · 创作者：601班 高瑜昊
-      </div>
-    </div>
+  <div>
+    <div class="my-id-label">🔍 输入对方的ID后呼叫</div>
+    <input type="text" id="targetId" placeholder="粘贴对方的通话ID">
+    <button id="callBtn" style="background:#48bb78;">📞 发起呼叫</button>
+  </div>
+
+  <div class="status" id="status">
+    ⚪ 初始化中...
+  </div>
+
+  <button id="hangupBtn" disabled style="background:#e53e3e;">❌ 挂断</button>
+  <div class="footer">
+    💡 对方打开同一个链接即可<br>
+    需要允许麦克风权限
   </div>
 </div>
 
-<script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
 <script>
-  // ========== 配置（改这里）==========
-  const CHANNEL_ID = "SwLZhbOCTTsAcXaR";
-  const IMGBB_KEY = "de1365709bd94acab828a7d6e6f35e36";
-  const DEEPSEEK_KEY = "sk-ff9ca06276354d6eb29fa3909294d6eb";
-  const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
-  // ===================================
-
-  const AI_AVATAR = "https://api.dicebear.com/7.x/bottts/svg?seed=deepseek";
-  const presetAvatars = [
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=cat",
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=dog",
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=fox",
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=bird",
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=panda",
-    "https://api.dicebear.com/7.x/thumbs/svg?seed=koala"
-  ];
-
-  let drone, myName = "", myAvatar = presetAvatars[0];
-  let previousMemberIds = [];
-
-  // ========== 系统消息 ==========
-  function showSystemMsg(text) {
-    const div = document.createElement("div");
-    div.className = "system-msg";
-    div.textContent = text;
-    document.getElementById("msgs").appendChild(div);
-    document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
-  }
-
-  // ========== 头像选择 ==========
-  const avatarContainer = document.getElementById("avatars");
-
-  function renderAvatars() {
-    avatarContainer.innerHTML = "";
-    presetAvatars.forEach((url) => {
-      const img = document.createElement("img");
-      img.src = url;
-      img.onclick = () => {
-        document.querySelectorAll(".avatar-pick img").forEach(el => el.classList.remove("sel"));
-        img.classList.add("sel");
-        myAvatar = url;
-      };
-      avatarContainer.appendChild(img);
-      if (url === myAvatar) img.classList.add("sel");
-    });
-    if (!document.querySelector(".avatar-pick img.sel")) {
-      const first = avatarContainer.querySelector("img");
-      if (first) first.classList.add("sel");
-    }
-  }
-
-  document.getElementById("avatarFileInput").onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const form = new FormData();
-    form.append("image", file);
-
-    try {
-      const res = await fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_KEY, {
-        method: "POST",
-        body: form
-      });
-      const json = await res.json();
-      if (json.success) {
-        const url = json.data.url;
-        if (!presetAvatars.includes(url)) {
-          presetAvatars.push(url);
-        }
-        myAvatar = url;
-        renderAvatars();
-      } else {
-        alert("头像上传失败，请重试");
-      }
-    } catch (err) {
-      alert("上传出错：" + err.message);
-    }
-    e.target.value = "";
-  };
-
-  renderAvatars();
-
-  // ========== 进入聊天 ==========
-  document.getElementById("goBtn").onclick = () => {
-    const nick = document.getElementById("nick").value.trim();
-    if (!nick) return alert("请输入昵称");
-    myName = nick;
-    document.getElementById("login").classList.add("hidden");
-    document.getElementById("room").classList.remove("hidden");
-
-    drone = new Scaledrone(CHANNEL_ID, { data: { name: myName, avatar: myAvatar } });
-
-    drone.on("open", (error) => {
-      if (error) return console.error(error);
-      
-      const room = drone.subscribe("observable-room");
-      
-      room.on("members", (members) => {
-        const currentIds = members.map(m => m.id);
-        
-        if (previousMemberIds.length === 0) {
-          previousMemberIds = currentIds;
-          return;
-        }
-
-        const joined = members.filter(m => !previousMemberIds.includes(m.id));
-        joined.forEach(m => {
-          if (m.clientData && m.clientData.name) {
-            showSystemMsg(m.clientData.name + " 已加入该聊天");
-          }
-        });
-
-        const leftIds = previousMemberIds.filter(id => !currentIds.includes(id));
-        leftIds.forEach(id => {
-          // 名字从之前记录中取
-        });
-
-        previousMemberIds = currentIds;
-      });
-
-      room.on("message", (msg) => {
-        if (msg.data.name && msg.data.name !== "__system__") {
-          showMessage(msg.data);
-        }
-      });
-    });
-  };
-
-  document.getElementById("nick").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") document.getElementById("goBtn").click();
+  // 使用公共免费信令服务器 (不需要自己部署)
+  const peer = new Peer(undefined, {
+    host: '0.peerjs.com',
+    port: 443,
+    path: '/',
+    secure: true,
+    debug: 0
   });
 
-  // ========== 显示消息 ==========
-  function showMessage(data) {
-    const { name, text, image, avatar } = data;
-    const row = document.createElement("div");
-    row.className = "msg-row";
+  let localStream = null;
+  let currentCall = null;
+  let isCallActive = false;
 
-    if (name === "AI助手") row.classList.add("ai");
+  const statusDiv = document.getElementById('status');
+  const hangupBtn = document.getElementById('hangupBtn');
+  const callBtn = document.getElementById('callBtn');
+  const targetInput = document.getElementById('targetId');
 
-    const av = document.createElement("img");
-    av.className = "avatar";
-    av.src = avatar || presetAvatars[0];
-
-    const content = document.createElement("div");
-    content.className = "msg-content";
-
-    const nameEl = document.createElement("div");
-    nameEl.className = "name";
-    nameEl.textContent = name;
-
-    const textEl = document.createElement("div");
-    textEl.className = "text";
-    textEl.textContent = text || "";
-
-    content.appendChild(nameEl);
-    content.appendChild(textEl);
-
-    if (image) {
-      const imgEl = document.createElement("img");
-      imgEl.src = image;
-      imgEl.onclick = () => window.open(image, "_blank");
-      content.appendChild(imgEl);
-    }
-
-    row.appendChild(av);
-    row.appendChild(content);
-    document.getElementById("msgs").appendChild(row);
-    document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
+  function setStatus(text, isError = false) {
+    statusDiv.innerHTML = text;
+    statusDiv.style.background = isError ? '#fff5f5' : '#f7fafc';
+    statusDiv.style.color = isError ? '#c53030' : '#2d3748';
   }
 
-  // ========== DeepSeek ==========
-  async function askAI(userMessage) {
-    const payload = {
-      model: "deepseek-chat",
-      messages: [
-        { role: "system", content: "你是一个活泼友好的助手，正在和宁波第二艺术实验学校的学生们聊天。语气轻松自然，回答尽量简洁。用中文回复。" },
-        { role: "user", content: userMessage }
-      ],
-      temperature: 0.8,
-      max_tokens: 500
-    };
-
+  // 获取麦克风
+  async function getMic() {
+    if (localStream && localStream.getAudioTracks().length > 0 && localStream.getAudioTracks()[0].readyState === 'live') {
+      return localStream;
+    }
     try {
-      const res = await fetch(DEEPSEEK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + DEEPSEEK_KEY
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const json = await res.json();
-      if (json.choices && json.choices.length > 0) {
-        return json.choices[0].message.content;
-      } else {
-        return "（AI 暂时无法回答）";
-      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStream = stream;
+      return stream;
     } catch (err) {
-      return "（调用 AI 出错: " + err.message + "）";
+      console.error('麦克风错误:', err);
+      setStatus('❌ 无法获取麦克风权限，请检查浏览器设置', true);
+      throw err;
     }
   }
 
-  // ========== 发送 ==========
-  function send() {
-    const inp = document.getElementById("say");
-    const txt = inp.value.trim();
-    if (!txt || !drone) return;
-
-    drone.publish({
-      room: "observable-room",
-      message: { name: myName, text: txt, avatar: myAvatar, image: null }
-    });
-
-    inp.value = "";
-
-    if (txt.startsWith("@AI") || txt.startsWith("@ai")) {
-      const question = txt.replace(/^@AI\s*/i, "").trim();
-      if (question) {
-        const loadingRow = document.createElement("div");
-        loadingRow.className = "msg-row ai";
-        loadingRow.id = "ai-loading";
-        const loadingAv = document.createElement("img");
-        loadingAv.className = "avatar";
-        loadingAv.src = AI_AVATAR;
-        const loadingContent = document.createElement("div");
-        loadingContent.className = "msg-content";
-        loadingContent.innerHTML = '<div class="name">AI助手</div><div class="text">正在思考...</div>';
-        loadingRow.appendChild(loadingAv);
-        loadingRow.appendChild(loadingContent);
-        document.getElementById("msgs").appendChild(loadingRow);
-        document.getElementById("msgs").scrollTop = document.getElementById("msgs").scrollHeight;
-
-        askAI(question).then(reply => {
-          const loadEl = document.getElementById("ai-loading");
-          if (loadEl) loadEl.remove();
-
-          drone.publish({
-            room: "observable-room",
-            message: { name: "AI助手", text: reply, avatar: AI_AVATAR, image: null }
-          });
-        });
-      }
-    }
+  // 播放对方声音
+  function playRemoteAudio(stream) {
+    const audio = new Audio();
+    audio.srcObject = stream;
+    audio.autoplay = true;
+    audio.onended = () => console.log('音频流结束');
   }
 
-  document.getElementById("sendBtn").onclick = send;
-  document.getElementById("say").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") send();
+  // 挂断清理
+  function hangup() {
+    if (currentCall) {
+      currentCall.close();
+      currentCall = null;
+    }
+    isCallActive = false;
+    hangupBtn.disabled = true;
+    callBtn.disabled = false;
+    setStatus('⚪ 通话已结束');
+    // 不关闭本地麦克风，方便再次呼叫
+  }
+
+  // 显示自己的ID
+  peer.on('open', (id) => {
+    const idElem = document.getElementById('myId');
+    if (idElem) idElem.innerText = id;
+    setStatus('✅ 在线，可开始通话');
+    console.log('我的 Peer ID:', id);
   });
 
-  // ========== 图片 ==========
-  document.getElementById("imgInput").onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !drone) return;
-
-    const form = new FormData();
-    form.append("image", file);
-
-    try {
-      const res = await fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_KEY, {
-        method: "POST",
-        body: form
-      });
-      const json = await res.json();
-      if (json.success) {
-        const url = json.data.url;
-        drone.publish({
-          room: "observable-room",
-          message: { name: myName, text: "", avatar: myAvatar, image: url }
-        });
-      } else {
-        alert("图片上传失败");
-      }
-    } catch (err) {
-      alert("上传出错：" + err.message);
+  // 接收来电
+  peer.on('call', async (incomingCall) => {
+    if (isCallActive) {
+      // 已经在通话中，拒绝新呼叫
+      incomingCall.close();
+      setStatus('📞 已有通话进行中，无法接听', true);
+      return;
     }
-    e.target.value = "";
+    
+    setStatus('📞 收到来电，正在接听...');
+    try {
+      const stream = await getMic();
+      incomingCall.answer(stream);
+      currentCall = incomingCall;
+      isCallActive = true;
+      
+      incomingCall.on('stream', (remoteStream) => {
+        playRemoteAudio(remoteStream);
+        setStatus('🎙️ 通话中');
+        hangupBtn.disabled = false;
+        callBtn.disabled = true;
+      });
+      
+      incomingCall.on('close', () => {
+        hangup();
+      });
+      
+      incomingCall.on('error', (err) => {
+        console.error('通话错误:', err);
+        setStatus('❌ 通话连接失败', true);
+        hangup();
+      });
+    } catch (err) {
+      setStatus('❌ 无法获取麦克风，接听失败', true);
+    }
+  });
+
+  // 主动呼叫
+  callBtn.onclick = async () => {
+    const targetId = targetInput.value.trim();
+    if (!targetId) {
+      setStatus('⚠️ 请输入对方的通话ID', true);
+      return;
+    }
+    if (targetId === peer.id) {
+      setStatus('⚠️ 不能呼叫自己', true);
+      return;
+    }
+    if (isCallActive) {
+      setStatus('⚠️ 已有通话进行中，请先挂断', true);
+      return;
+    }
+    
+    setStatus('📞 呼叫中，等待对方接听...');
+    callBtn.disabled = true;
+    
+    try {
+      const stream = await getMic();
+      const call = peer.call(targetId, stream);
+      currentCall = call;
+      
+      call.on('stream', (remoteStream) => {
+        playRemoteAudio(remoteStream);
+        setStatus('🎙️ 通话中');
+        hangupBtn.disabled = false;
+      });
+      
+      call.on('close', () => {
+        hangup();
+      });
+      
+      call.on('error', (err) => {
+        console.error('呼叫错误:', err);
+        setStatus('❌ 连接失败，对方可能不在线或ID错误', true);
+        hangup();
+        callBtn.disabled = false;
+      });
+    } catch (err) {
+      setStatus('❌ 无法获取麦克风', true);
+      callBtn.disabled = false;
+    }
   };
+
+  // 挂断按钮
+  hangupBtn.onclick = () => {
+    hangup();
+  };
+
+  // 复制ID
+  document.getElementById('copyBtn').onclick = () => {
+    const idText = document.getElementById('myId').innerText;
+    if (idText && idText !== '加载中...') {
+      navigator.clipboard.writeText(idText);
+      setStatus('✅ 通话ID已复制，可以发给朋友了');
+      setTimeout(() => {
+        if (!isCallActive) setStatus('✅ 在线，可开始通话');
+      }, 1500);
+    }
+  };
+
+  // 页面关闭时释放资源
+  window.addEventListener('beforeunload', () => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    if (currentCall) {
+      currentCall.close();
+    }
+    peer.destroy();
+  });
 </script>
-
 </body>
 </html>
