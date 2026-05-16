@@ -1,294 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>免费实时语音通话</title>
-  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .card {
-      background: white;
-      border-radius: 32px;
-      padding: 24px 20px 32px;
-      max-width: 500px;
-      width: 100%;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-      text-align: center;
-    }
-    h2 { margin: 0 0 8px; color: #333; }
-    .sub { color: #666; margin-bottom: 24px; font-size: 14px; }
-    .my-id-box {
-      background: #f0f0f0;
-      border-radius: 20px;
-      padding: 16px;
-      margin-bottom: 24px;
-    }
-    .my-id-label { font-size: 12px; color: #888; margin-bottom: 8px; }
-    .my-id-value {
-      font-size: 20px;
-      font-weight: bold;
-      font-family: monospace;
-      word-break: break-all;
-      background: white;
-      padding: 10px;
-      border-radius: 12px;
-      margin-bottom: 12px;
-    }
-    button {
-      background: #667eea;
-      border: none;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 40px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      margin: 4px;
-      transition: 0.2s;
-    }
-    button:active { transform: scale(0.97); }
-    button.secondary { background: #48bb78; }
-    button.danger { background: #e53e3e; }
-    button:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
-    input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 2px solid #e2e8f0;
-      border-radius: 40px;
-      font-size: 16px;
-      margin: 8px 0;
-      text-align: center;
-    }
-    .status {
-      background: #f7fafc;
-      border-radius: 40px;
-      padding: 12px;
-      margin: 20px 0;
-      font-size: 14px;
-      font-weight: 500;
-    }
-    .footer { font-size: 11px; color: #aaa; margin-top: 20px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跨网实时语音通话 WebRTC</title>
+    <style>
+        *{box-sizing: border-box;margin:0;padding:0;}
+        body{max-width:650px;margin:30px auto;padding:0 20px;font-family:system-ui;}
+        .card{border:1px #eee solid;border-radius:12px;padding:20px;margin:15px 0;}
+        button{padding:10px 18px;margin:6px;border:none;border-radius:6px;cursor:pointer;font-size:15px;}
+        #openMic{background:#23c16c;color:#fff;}
+        #createOffer{background:#2185f5;color:#fff;}
+        #answerBtn{background:#722ed1;color:#fff;}
+        #hangUp{background:#f53f3f;color:#fff;}
+        textarea{width:100%;height:120px;margin:10px 0;padding:8px;border:1px #ddd solid;border-radius:6px;}
+        .status{margin:12px 0;color:#555;}
+    </style>
 </head>
 <body>
-<div class="card">
-  <h2>🎙️ 实时语音通话</h2>
-  <div class="sub">点对点直连 · 完全免费</div>
+    <h2>跨网语音通话</h2>
+    <div class="card">
+        <button id="openMic">开启麦克风</button>
+        <p class="status" id="status">状态：待机</p>
+    </div>
 
-  <div class="my-id-box">
-    <div class="my-id-label">📱 你的通话ID (发给对方)</div>
-    <div class="my-id-value" id="myId">加载中...</div>
-    <button id="copyBtn">📋 复制我的ID</button>
-  </div>
+    <div class="card">
+        <button id="createOffer">发起通话</button>
+        <button id="answerBtn">接听通话</button>
+        <button id="hangUp">挂断通话</button>
+    </div>
 
-  <div>
-    <div class="my-id-label">🔍 输入对方的ID后呼叫</div>
-    <input type="text" id="targetId" placeholder="粘贴对方的通话ID">
-    <button id="callBtn" style="background:#48bb78;">📞 发起呼叫</button>
-  </div>
+    <div class="card">
+        <p>我方信息，复制发送给对方：</p>
+        <textarea id="localInfo" readonly></textarea>
+        <p>粘贴对方信息：</p>
+        <textarea id="remoteInfo" placeholder="粘贴对方发来的文本"></textarea>
+    </div>
 
-  <div class="status" id="status">
-    ⚪ 初始化中...
-  </div>
+    <audio id="remoteAudio" autoplay>
 
-  <button id="hangupBtn" disabled style="background:#e53e3e;">❌ 挂断</button>
-  <div class="footer">
-    💡 对方打开同一个链接即可<br>
-    需要允许麦克风权限
-  </div>
-</div>
+    <script>
+        // 免费公开STUN服务器，实现跨网穿透
+        const config = {
+            iceServers: [
+                {urls: 'stun:stun.l.google.com:19302'},
+                {urls: 'stun:stun1.l.google.com:19302'}
+            ]
+        };
 
-<script>
-  // 使用公共免费信令服务器 (不需要自己部署)
-  const peer = new Peer(undefined, {
-    host: '0.peerjs.com',
-    port: 443,
-    path: '/',
-    secure: true,
-    debug: 0
-  });
+        let peerConn;
+        let localStream;
+        const remoteAudio = document.getElementById('remoteAudio');
+        const statusText = document.getElementById('status');
+        const localInfo = document.getElementById('localInfo');
+        const remoteInfo = document.getElementById('remoteInfo');
 
-  let localStream = null;
-  let currentCall = null;
-  let isCallActive = false;
+        // 打开麦克风
+        document.getElementById('openMic').addEventListener('click',async ()=>{
+            try{
+                localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+                statusText.innerText = "状态：麦克风已就绪，可以通话";
+            }catch(e){
+                statusText.innerText = "麦克风开启失败，请授权权限";
+            }
+        });
 
-  const statusDiv = document.getElementById('status');
-  const hangupBtn = document.getElementById('hangupBtn');
-  const callBtn = document.getElementById('callBtn');
-  const targetInput = document.getElementById('targetId');
+        // 发起呼叫
+        document.getElementById('createOffer').addEventListener('click',async ()=>{
+            if(!localStream) return alert("请先开启麦克风");
+            peerConn = new RTCPeerConnection(config);
+            localStream.getTracks().forEach(track=>peerConn.addTrack(track,localStream));
 
-  function setStatus(text, isError = false) {
-    statusDiv.innerHTML = text;
-    statusDiv.style.background = isError ? '#fff5f5' : '#f7fafc';
-    statusDiv.style.color = isError ? '#c53030' : '#2d3748';
-  }
+            peerConn.ontrack = e=>remoteAudio.srcObject = e.streams[0];
+            peerConn.onicecandidate = e=>{
+                if(e.candidate) localInfo.value = JSON.stringify(peerConn.localDescription);
+            };
 
-  // 获取麦克风
-  async function getMic() {
-    if (localStream && localStream.getAudioTracks().length > 0 && localStream.getAudioTracks()[0].readyState === 'live') {
-      return localStream;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      localStream = stream;
-      return stream;
-    } catch (err) {
-      console.error('麦克风错误:', err);
-      setStatus('❌ 无法获取麦克风权限，请检查浏览器设置', true);
-      throw err;
-    }
-  }
+            const offer = await peerConn.createOffer();
+            await peerConn.setLocalDescription(offer);
+            statusText.innerText = "状态：已发起呼叫，发送信息给对方";
+        });
 
-  // 播放对方声音
-  function playRemoteAudio(stream) {
-    const audio = new Audio();
-    audio.srcObject = stream;
-    audio.autoplay = true;
-    audio.onended = () => console.log('音频流结束');
-  }
+        // 接听呼叫
+        document.getElementById('answerBtn').addEventListener('click',async ()=>{
+            if(!localStream || !remoteInfo.value) return alert("请开启麦克风并粘贴对方信息");
+            const remoteDesc = JSON.parse(remoteInfo.value);
+            peerConn = new RTCPeerConnection(config);
+            localStream.getTracks().forEach(track=>peerConn.addTrack(track,localStream));
 
-  // 挂断清理
-  function hangup() {
-    if (currentCall) {
-      currentCall.close();
-      currentCall = null;
-    }
-    isCallActive = false;
-    hangupBtn.disabled = true;
-    callBtn.disabled = false;
-    setStatus('⚪ 通话已结束');
-    // 不关闭本地麦克风，方便再次呼叫
-  }
+            peerConn.ontrack = e=>remoteAudio.srcObject = e.streams[0];
+            peerConn.onicecandidate = e=>{
+                if(e.candidate) localInfo.value = JSON.stringify(peerConn.localDescription);
+            };
 
-  // 显示自己的ID
-  peer.on('open', (id) => {
-    const idElem = document.getElementById('myId');
-    if (idElem) idElem.innerText = id;
-    setStatus('✅ 在线，可开始通话');
-    console.log('我的 Peer ID:', id);
-  });
+            await peerConn.setRemoteDescription(remoteDesc);
+            const answer = await peerConn.createAnswer();
+            await peerConn.setLocalDescription(answer);
+            statusText.innerText = "状态：等待对方确认连接";
+        });
 
-  // 接收来电
-  peer.on('call', async (incomingCall) => {
-    if (isCallActive) {
-      // 已经在通话中，拒绝新呼叫
-      incomingCall.close();
-      setStatus('📞 已有通话进行中，无法接听', true);
-      return;
-    }
-    
-    setStatus('📞 收到来电，正在接听...');
-    try {
-      const stream = await getMic();
-      incomingCall.answer(stream);
-      currentCall = incomingCall;
-      isCallActive = true;
-      
-      incomingCall.on('stream', (remoteStream) => {
-        playRemoteAudio(remoteStream);
-        setStatus('🎙️ 通话中');
-        hangupBtn.disabled = false;
-        callBtn.disabled = true;
-      });
-      
-      incomingCall.on('close', () => {
-        hangup();
-      });
-      
-      incomingCall.on('error', (err) => {
-        console.error('通话错误:', err);
-        setStatus('❌ 通话连接失败', true);
-        hangup();
-      });
-    } catch (err) {
-      setStatus('❌ 无法获取麦克风，接听失败', true);
-    }
-  });
-
-  // 主动呼叫
-  callBtn.onclick = async () => {
-    const targetId = targetInput.value.trim();
-    if (!targetId) {
-      setStatus('⚠️ 请输入对方的通话ID', true);
-      return;
-    }
-    if (targetId === peer.id) {
-      setStatus('⚠️ 不能呼叫自己', true);
-      return;
-    }
-    if (isCallActive) {
-      setStatus('⚠️ 已有通话进行中，请先挂断', true);
-      return;
-    }
-    
-    setStatus('📞 呼叫中，等待对方接听...');
-    callBtn.disabled = true;
-    
-    try {
-      const stream = await getMic();
-      const call = peer.call(targetId, stream);
-      currentCall = call;
-      
-      call.on('stream', (remoteStream) => {
-        playRemoteAudio(remoteStream);
-        setStatus('🎙️ 通话中');
-        hangupBtn.disabled = false;
-      });
-      
-      call.on('close', () => {
-        hangup();
-      });
-      
-      call.on('error', (err) => {
-        console.error('呼叫错误:', err);
-        setStatus('❌ 连接失败，对方可能不在线或ID错误', true);
-        hangup();
-        callBtn.disabled = false;
-      });
-    } catch (err) {
-      setStatus('❌ 无法获取麦克风', true);
-      callBtn.disabled = false;
-    }
-  };
-
-  // 挂断按钮
-  hangupBtn.onclick = () => {
-    hangup();
-  };
-
-  // 复制ID
-  document.getElementById('copyBtn').onclick = () => {
-    const idText = document.getElementById('myId').innerText;
-    if (idText && idText !== '加载中...') {
-      navigator.clipboard.writeText(idText);
-      setStatus('✅ 通话ID已复制，可以发给朋友了');
-      setTimeout(() => {
-        if (!isCallActive) setStatus('✅ 在线，可开始通话');
-      }, 1500);
-    }
-  };
-
-  // 页面关闭时释放资源
-  window.addEventListener('beforeunload', () => {
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-    }
-    if (currentCall) {
-      currentCall.close();
-    }
-    peer.destroy();
-  });
-</script>
+        // 挂断
+        document.getElementById('hangUp').addEventListener('click',()=>{
+            if(peerConn) peerConn.close();
+            if(localStream) localStream.getTracks().forEach(track=>track.stop());
+            remoteAudio.srcObject = null;
+            localInfo.value = '';
+            remoteInfo.value = '';
+            statusText.innerText = "状态：通话已挂断";
+        });
+    </script>
 </body>
 </html>
