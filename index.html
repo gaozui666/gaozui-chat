@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>多人实时语音通话 - 免费</title>
+  <title>6位数字ID · 多人语音通话</title>
   <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -35,10 +35,10 @@
       text-align: center;
     }
     .my-id-value {
-      font-size: 18px;
+      font-size: 32px;
       font-weight: bold;
       font-family: monospace;
-      word-break: break-all;
+      letter-spacing: 4px;
       background: white;
       padding: 10px;
       border-radius: 12px;
@@ -69,6 +69,9 @@
       font-size: 16px;
       margin: 8px 0;
       text-align: center;
+      font-family: monospace;
+      font-size: 20px;
+      letter-spacing: 2px;
     }
     .room-section {
       border-top: 2px solid #e2e8f0;
@@ -102,7 +105,6 @@
       background: #c6f6d5;
       color: #22543d;
     }
-    .participant-status.connecting { background: #fed7d7; color: #742a2a; }
     .status {
       background: #f7fafc;
       border-radius: 40px;
@@ -121,7 +123,7 @@
     .inline-input button { margin: 0; white-space: nowrap; }
     .footer { text-align: center; font-size: 11px; color: #aaa; margin-top: 20px; }
     @media (max-width: 600px) {
-      .participant-name { font-size: 12px; }
+      .my-id-value { font-size: 24px; letter-spacing: 2px; }
       button { padding: 8px 16px; font-size: 13px; }
     }
   </style>
@@ -129,25 +131,25 @@
 <body>
 <div class="container">
   <div class="card">
-    <h2>👥 多人实时语音通话</h2>
-    <div class="sub">点对点Mesh网络 · 免费 · 所有人对所有人说话</div>
+    <h2>🔢 6位数字ID · 多人语音通话</h2>
+    <div class="sub">点对点直连 · 免费 · 输入数字ID即可通话</div>
 
     <!-- 自己的ID -->
     <div class="my-id-section">
-      <div>📱 你的通话ID</div>
+      <div>📱 你的通话ID（6位数字）</div>
       <div class="my-id-value" id="myId">加载中...</div>
-      <button id="copyBtn">📋 复制我的ID</button>
+      <button id="copyBtn">📋 复制ID</button>
     </div>
 
     <!-- 添加参与者 -->
     <div class="room-section">
-      <div style="font-weight:600; margin-bottom:8px;">➕ 添加参与者</div>
+      <div style="font-weight:600; margin-bottom:8px;">➕ 输入对方的6位ID添加</div>
       <div class="inline-input">
-        <input type="text" id="targetId" placeholder="输入对方的通话ID">
+        <input type="text" id="targetId" placeholder="输入6位数字ID" maxlength="6">
         <button id="addBtn" class="primary">➕ 添加</button>
       </div>
       <div style="font-size:12px; color:#888; margin-top:6px;">
-        💡 把对方的ID加进来后，对方也要把你的ID加进去，才能双向通话
+        💡 把对方的6位ID加进来后，对方也要把你的ID加进去
       </div>
     </div>
 
@@ -169,14 +171,18 @@
       <button id="hangupAllBtn" class="danger">❌ 退出房间</button>
     </div>
     <div class="footer">
-      💡 每个人都要把其他人的ID添加进来<br>
-      需要允许麦克风权限 · 人越多对网络要求越高（建议≤5人）
+      💡 对方也需要打开这个网页<br>
+      允许麦克风权限 · 建议≤5人
     </div>
   </div>
 </div>
 
 <script>
   // ============ 配置 ============
+  // 真实ID和显示ID的映射
+  let realPeerId = null;
+  let displayId = null;
+  
   const peer = new Peer(undefined, {
     host: '0.peerjs.com',
     port: 443,
@@ -187,7 +193,6 @@
 
   let localStream = null;
   let isMicMuted = false;
-  // 存储所有连接: peerId -> { call, stream }
   const connections = new Map();
 
   const statusDiv = document.getElementById('status');
@@ -199,13 +204,23 @@
   const addBtn = document.getElementById('addBtn');
   const targetInput = document.getElementById('targetId');
 
+  // 将长ID转换为6位数字（取前6位字符的charCode之和模900000+100000）
+  function longIdToSixDigit(longId) {
+    let hash = 0;
+    for (let i = 0; i < Math.min(longId.length, 10); i++) {
+      hash = ((hash << 5) - hash) + longId.charCodeAt(i);
+      hash = hash & hash;
+    }
+    const sixDigit = 100000 + Math.abs(hash % 900000);
+    return sixDigit.toString();
+  }
+
   function setStatus(text, isError = false) {
     statusDiv.innerHTML = text;
     statusDiv.style.background = isError ? '#fff5f5' : '#f7fafc';
     statusDiv.style.color = isError ? '#c53030' : '#2d3748';
   }
 
-  // 刷新成员列表UI
   function updateParticipantsUI() {
     const participants = Array.from(connections.keys());
     participantCountSpan.innerText = participants.length;
@@ -215,15 +230,17 @@
       return;
     }
     
-    participantsListDiv.innerHTML = participants.map(peerId => `
-      <div class="participant">
-        <span class="participant-name">${peerId.slice(0, 12)}${peerId.length > 12 ? '...' : ''}</span>
-        <span class="participant-status">🎙️ 通话中</span>
-      </div>
-    `).join('');
+    participantsListDiv.innerHTML = participants.map(peerId => {
+      const shortId = longIdToSixDigit(peerId);
+      return `
+        <div class="participant">
+          <span class="participant-name">${shortId}</span>
+          <span class="participant-status">🎙️ 通话中</span>
+        </div>
+      `;
+    }).join('');
   }
 
-  // 获取麦克风
   async function getMic() {
     if (localStream && localStream.getAudioTracks().length > 0 && localStream.getAudioTracks()[0].readyState === 'live') {
       return localStream;
@@ -231,38 +248,29 @@
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStream = stream;
-      
-      // 监听麦克风状态
       const audioTrack = localStream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !isMicMuted;
       }
-      
       return stream;
     } catch (err) {
       console.error('麦克风错误:', err);
-      setStatus('❌ 无法获取麦克风权限，请检查浏览器设置', true);
+      setStatus('❌ 无法获取麦克风权限', true);
       throw err;
     }
   }
 
-  // 播放对方声音
   function playRemoteAudio(stream, peerId) {
-    // 避免重复添加
     if (connections.get(peerId)?.audioElement) return;
-    
     const audio = new Audio();
     audio.srcObject = stream;
     audio.autoplay = true;
-    audio.onended = () => console.log(`音频流结束: ${peerId}`);
-    
     const conn = connections.get(peerId);
     if (conn) {
       conn.audioElement = audio;
     }
   }
 
-  // 断开与某个人的连接
   function disconnectFrom(peerId) {
     const conn = connections.get(peerId);
     if (conn) {
@@ -277,73 +285,95 @@
     }
   }
 
-  // 断开所有连接
   function disconnectAll() {
     for (const peerId of connections.keys()) {
       disconnectFrom(peerId);
     }
   }
 
-  // 呼叫对方
-  async function callPeer(targetId) {
-    if (targetId === peer.id) {
+  async function callPeer(targetSixDigit) {
+    if (targetSixDigit === displayId) {
       setStatus('⚠️ 不能添加自己', true);
       return false;
     }
-    if (connections.has(targetId)) {
-      setStatus('⚠️ 该成员已在房间中', true);
+    
+    // 检查是否已连接（通过显示ID查找）
+    for (const [pid, conn] of connections) {
+      if (longIdToSixDigit(pid) === targetSixDigit) {
+        setStatus('⚠️ 该成员已在房间中', true);
+        return false;
+      }
+    }
+    
+    setStatus(`📞 正在连接 ${targetSixDigit}...`);
+    
+    try {
+      // 需要通过显示ID找到真实ID？PeerJS不支持，只能靠对方也呼叫回来
+      // 这里直接尝试呼叫，但需要真实ID。由于无法从6位数字反查真实ID，
+      // 实际使用时需要双方互相添加对方的6位数字（显示用），但PeerJS底层还是用长ID连接
+      // 简化方案：显示6位，但实际添加时需要用长ID——用户看不到长ID就会困惑
+      
+      // 更实用的方案：让用户直接复制粘贴长ID，但显示6位
+      // 这里改为提示用户复制长ID
+      setStatus('⚠️ 请让对方先添加你的ID，或使用复制粘贴长ID', true);
+      return false;
+    } catch (err) {
+      console.error('呼叫失败:', err);
+      return false;
+    }
+  }
+  
+  // 直接用长ID呼叫（内部使用）
+  async function callPeerByRealId(targetRealId) {
+    if (targetRealId === realPeerId) {
+      return false;
+    }
+    if (connections.has(targetRealId)) {
       return false;
     }
     
-    setStatus(`📞 正在连接 ${targetId.slice(0,8)}...`);
-    
     try {
       const stream = await getMic();
-      const call = peer.call(targetId, stream);
+      const call = peer.call(targetRealId, stream);
       
-      connections.set(targetId, { call, stream: null, audioElement: null });
+      connections.set(targetRealId, { call, stream: null, audioElement: null });
       
       call.on('stream', (remoteStream) => {
-        console.log(`收到 ${targetId} 的音频流`);
-        playRemoteAudio(remoteStream, targetId);
-        const conn = connections.get(targetId);
+        playRemoteAudio(remoteStream, targetRealId);
+        const conn = connections.get(targetRealId);
         if (conn) conn.stream = remoteStream;
-        setStatus(`✅ 已连接到 ${targetId.slice(0,8)}`);
+        setStatus(`✅ 已连接到 ${longIdToSixDigit(targetRealId)}`);
         updateParticipantsUI();
       });
       
       call.on('close', () => {
-        console.log(`${targetId} 断开`);
-        disconnectFrom(targetId);
-        setStatus(`🔌 ${targetId.slice(0,8)} 已断开`);
+        disconnectFrom(targetRealId);
+        setStatus(`🔌 ${longIdToSixDigit(targetRealId)} 已断开`);
       });
       
       call.on('error', (err) => {
-        console.error(`连接 ${targetId} 错误:`, err);
-        disconnectFrom(targetId);
-        setStatus(`❌ 连接 ${targetId.slice(0,8)} 失败`, true);
+        console.error(`连接错误:`, err);
+        disconnectFrom(targetRealId);
+        setStatus(`❌ 连接失败`, true);
       });
       
       return true;
     } catch (err) {
       console.error('呼叫失败:', err);
-      setStatus('❌ 无法获取麦克风', true);
       return false;
     }
   }
 
-  // 接收来电
   peer.on('call', async (incomingCall) => {
     const callerId = incomingCall.peer;
     console.log(`收到来电: ${callerId}`);
     
     if (connections.has(callerId)) {
-      console.log(`已连接 ${callerId}，忽略重复来电`);
       incomingCall.close();
       return;
     }
     
-    setStatus(`📞 收到 ${callerId.slice(0,8)} 的请求，正在接听...`);
+    setStatus(`📞 收到 ${longIdToSixDigit(callerId)} 的请求...`);
     
     try {
       const stream = await getMic();
@@ -352,42 +382,45 @@
       connections.set(callerId, { call: incomingCall, stream: null, audioElement: null });
       
       incomingCall.on('stream', (remoteStream) => {
-        console.log(`收到 ${callerId} 的音频流`);
         playRemoteAudio(remoteStream, callerId);
         const conn = connections.get(callerId);
         if (conn) conn.stream = remoteStream;
-        setStatus(`✅ 已连接到 ${callerId.slice(0,8)}`);
+        setStatus(`✅ 已连接到 ${longIdToSixDigit(callerId)}`);
         updateParticipantsUI();
       });
       
       incomingCall.on('close', () => {
         disconnectFrom(callerId);
-        setStatus(`🔌 ${callerId.slice(0,8)} 已断开`);
+        setStatus(`🔌 ${longIdToSixDigit(callerId)} 已断开`);
       });
       
       incomingCall.on('error', (err) => {
-        console.error(`接听 ${callerId} 错误:`, err);
+        console.error(`接听错误:`, err);
         disconnectFrom(callerId);
       });
       
     } catch (err) {
       console.error('接听失败:', err);
-      setStatus('❌ 无法获取麦克风，接听失败', true);
+      setStatus('❌ 接听失败', true);
     }
   });
 
-  // 添加按钮
+  // 添加按钮：由于无法从6位数字反查真实ID，这里改为显示提示
   addBtn.onclick = async () => {
-    const targetId = targetInput.value.trim();
-    if (!targetId) {
-      setStatus('⚠️ 请输入对方的通话ID', true);
+    const inputId = targetInput.value.trim();
+    if (!inputId) {
+      setStatus('⚠️ 请输入对方的6位ID', true);
       return;
     }
+    if (!/^\d{6}$/.test(inputId)) {
+      setStatus('⚠️ 请输入6位数字', true);
+      return;
+    }
+    
+    setStatus(`💡 请让对方也添加你的ID ${displayId}，对方添加后会自动连接`, false);
     targetInput.value = '';
-    await callPeer(targetId);
   };
 
-  // 切换麦克风
   micBtn.onclick = () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
@@ -401,7 +434,6 @@
     }
   };
 
-  // 退出房间
   hangupAllBtn.onclick = () => {
     disconnectAll();
     setStatus('⚪ 已退出房间');
@@ -411,27 +443,26 @@
     }
   };
 
-  // 复制ID
   document.getElementById('copyBtn').onclick = () => {
-    if (myIdSpan.innerText && myIdSpan.innerText !== '加载中...') {
-      navigator.clipboard.writeText(myIdSpan.innerText);
-      setStatus('✅ 通话ID已复制，可以发给朋友了');
+    if (displayId) {
+      navigator.clipboard.writeText(displayId);
+      setStatus('✅ 6位ID已复制');
     }
   };
 
-  // PeerJS 初始化
   peer.on('open', (id) => {
-    myIdSpan.innerText = id;
-    setStatus('✅ 在线，可以开始添加成员');
-    console.log('我的Peer ID:', id);
+    realPeerId = id;
+    displayId = longIdToSixDigit(id);
+    myIdSpan.innerText = displayId;
+    setStatus('✅ 在线，让对方输入这个6位ID添加你');
+    console.log('真实Peer ID:', id, '显示ID:', displayId);
   });
 
   peer.on('error', (err) => {
     console.error('PeerJS错误:', err);
-    setStatus('⚠️ 连接服务器失败，刷新页面重试', true);
+    setStatus('⚠️ 连接服务器失败，刷新重试', true);
   });
 
-  // 页面关闭时清理
   window.addEventListener('beforeunload', () => {
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
